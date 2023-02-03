@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Praxish Sandbox</title>
+</head>
+<body>
+  <h1>Praxish Sandbox</h1>
+  <script src="db.js"></script>
+  <script>
+  const testDB = {};
+  insert(testDB, "foo.bar.baz");
+  insert(testDB, "foo.bar.woof");
+  insert(testDB, "foo.meow.woof");
+  insert(testDB, "fizz.buzz.foo");
+  insert(testDB, "some.other.woof");
+  console.log(testDB);
+  console.log(unifyAll(["X.Y.woof", "fizz.buzz.X"], testDB));
+  </script>
+</body>
+</html>
