@@ -93,6 +93,18 @@ function insert(db, sentence) {
   return db;
 }
 
+// Given a single exclusion logic `sentence` (containing no logic variables)
+// and a `db`, retract the `sentence` from the `db` and return the `db`.
+function retract(db, sentence) {
+  let subtree = db;
+  const parts = sentence.trim().split(/[\.\!]/);
+  for (const part of parts.slice(0, -1)) {
+    subtree = subtree[part] || {};
+  }
+  delete subtree[parts.slice(-1)[0]];
+  return db;
+}
+
 // Given an exclusion logic `db`, return a list of `sentences` that present
 // the `db` contents in a more straightforwardly human-readable form.
 // FIXME The returned sentences use only . (and never !),

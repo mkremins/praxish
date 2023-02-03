@@ -15,8 +15,10 @@
   insert(testDB, "foo.meow.woof");
   insert(testDB, "fizz.buzz.foo");
   insert(testDB, "some.other.woof");
-  console.log(testDB);
+  console.log(dbToSentences(testDB));
   console.log(unifyAll(["X.Y.woof", "fizz.buzz.X"], testDB));
+  retract(testDB, "foo.bar");
+  console.log(dbToSentences(testDB));
   </script>
 </body>
 </html>
