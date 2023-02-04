@@ -21,10 +21,8 @@ const greetPractice = {
     {
       name: "[Actor]: Greet [Other]",
       conditions: [
-        "practice.greet.Actor.Other"
-        // TODO The condition on the previous line really needs to be an eq condition.
-        // As written it'll bind to the Greeter and Greeted from *any* active instance
-        // of the `greet` practice – create multiple instances to verify.
+        "eq Actor Greeter",
+        "eq Other Greeted"
       ],
       outcomes: [
         //"insert practice.respondToGreeting.Other.Actor",
@@ -50,10 +48,11 @@ const tendBarPractice = {
     {
       name: "[Actor]: Walk up to bar",
       conditions: [
+        "neq Actor Bartender",
         "not practice.tendBar.Bartender.customer.Actor"
       ],
       outcomes: [
-        "insert practice.tendBar.Bartender.customer.Customer"
+        "insert practice.tendBar.Bartender.customer.Actor"
       ]
     },
     {
@@ -62,7 +61,7 @@ const tendBarPractice = {
         "practice.tendBar.Bartender.customer.Actor"
       ],
       outcomes: [
-        "delete practice.tendBar.Bartender.customer.Customer"
+        "delete practice.tendBar.Bartender.customer.Actor"
       ]
     },
     {
@@ -70,17 +69,17 @@ const tendBarPractice = {
       conditions: [
         "practice.tendBar.Bartender.customer.Actor",
         "not practice.tendBar.Bartender.customer.Actor!beverage",
-        "practice.tendBar.data.beverageType.Beverage"
+        "practiceData.tendBar.beverageType.Beverage"
       ],
       outcomes: [
-        "insert practice.tendBar.Bartender.customer.Customer!order!Beverage"
+        "insert practice.tendBar.Bartender.customer.Actor!order!Beverage"
         // TODO insert an obligation-to-act on the part of the bartender?
       ]
     },
     {
       name: "[Actor]: Fulfill [Customer]'s order",
       conditions: [
-        "practice.tendBar.Actor", // Actor == Bartender? (probably needs an eq condition tbh)
+        "eq Actor Bartender",
         "practice.tendBar.Bartender.customer.Customer!order!Beverage"
       ],
       outcomes: [
@@ -105,7 +104,7 @@ const tendBarPractice = {
       ],
       outcomes: [
         "delete practice.tendBar.Bartender.customer.Actor!beverage",
-        "insert practice.tendBar.Bartender.customer.Customer!spill"
+        "insert practice.tendBar.Bartender.customer.Actor!spill"
         // FIXME maybe spawn a separate spill practice like James D was playing with?
       ]
     },
@@ -126,12 +125,22 @@ const tendBarPractice = {
 /// Test Praxish: initialize a `testPraxishState`,
 /// yeet a practice instance in there, and start ticking.
 
+function doTicks(praxishState, n) {
+  for (let i = 0; i < n; i++) {
+    tick(praxishState);
+  }
+}
+
 const testPraxishState = createPraxishState();
 testPraxishState.allChars = ["max", "nic", "isaac"];
+// First test with just the `greet` practice
+console.log("PRACTICE TEST: greet");
 definePractice(testPraxishState, greetPractice);
 insert(testPraxishState.db, "practice.greet.max.isaac");
-//insert(testPraxishState.db, "practice.tendBar.isaac");
-tick(testPraxishState);
-tick(testPraxishState);
-tick(testPraxishState);
-tick(testPraxishState);
+insert(testPraxishState.db, "practice.greet.nic.max");
+doTicks(testPraxishState, 4);
+// Then introduce and test with the `tendBar` practice
+console.log("PRACTICE TEST: tendBar");
+definePractice(testPraxishState, tendBarPractice);
+insert(testPraxishState.db, "practice.tendBar.isaac");
+doTicks(testPraxishState, 12);

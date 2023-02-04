@@ -8,6 +8,12 @@ function isUppercase(c) {
   return /[A-Z]/.test(c);
 }
 
+// Given `part` of an exclusion logic sentence,
+// return whether this `part` represents a variable or a constant.
+function isVariable(part) {
+  return isUppercase(part[0]);
+}
+
 // Given a single exclusion logic `sentence`, a `db`, and a `bindings` map
 // containing previously established assignments of logic variables to values,
 // return a list of updated `bindings` maps in which each map represents
@@ -17,7 +23,7 @@ function unify(sentence, db, bindings) {
   const parts = sentence.trim().split(/[\.\!]/);
   for (const part of parts) {
     const nextPWs = [];
-    const partIsVar = isUppercase(part[0]); // Is this logic sentence part a variable or constant?
+    const partIsVar = isVariable(part); // Is this logic sentence part a variable or constant?
     for (const pw of possibleWorlds) {
       const branchName = partIsVar ? pw.bindings[part] : part;
       if (partIsVar && !branchName) {
@@ -131,7 +137,7 @@ function dbToSentences(db) {
 function ground(sentence, bindings) {
   const parts = sentence.trim().match(/[^\.\!]+.?/g);
   const groundedParts = parts.map(part => {
-    if (!isUppercase(part[0])) return part;
+    if (!isVariable(part)) return part;
     const lastChar = part.slice(-1)[0];
     const hasPunct = lastChar === "!" || lastChar === ".";
     const nonPunctPart = hasPunct ? part.slice(0, -1) : part;
