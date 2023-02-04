@@ -79,6 +79,10 @@ function insert(db, sentence) {
     if (lastChar === "!") {
       const nonPunctPart = part.slice(0, -1);
       subtree[nonPunctPart] = {}; // Always overwrite subtree with a fresh one if using !
+      // TODO I suspect the always-overwrite behavior in the previous line might be a subtle bug.
+      // What if we insert foo!bar.baz and then foo!bar.meow? Should this preserve foo!bar.baz,
+      // since there's still only a single foo!bar node in the database?
+      // Need to look at the Praxis docs a bit more to figure out the intended semantics.
       subtree = subtree[nonPunctPart];
     }
     else if (lastChar === ".") {
