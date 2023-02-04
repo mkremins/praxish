@@ -124,3 +124,20 @@ function dbToSentences(db) {
   }
   return allSentences;
 }
+
+// Given an exclusion logic `sentence` and a map of `bindings`,
+// return a grounded version of the `sentence` with variables
+// from the keys of `bindings` replaced by their bound values.
+function ground(sentence, bindings) {
+  const parts = sentence.trim().match(/[^\.\!]+.?/g);
+  const groundedParts = parts.map(part => {
+    if (!isUppercase(part[0])) return part;
+    const lastChar = part.slice(-1)[0];
+    const hasPunct = lastChar === "!" || lastChar === ".";
+    const nonPunctPart = hasPunct ? part.slice(0, -1) : part;
+    const boundVal = bindings[nonPunctPart];
+    if (!boundVal) console.warn("Missing binding", nonPunctPart, bindings);
+    return (boundVal || nonPunctPart) + (hasPunct ? lastChar : "");
+  });
+  return groundedParts.join("");
+}
