@@ -153,6 +153,73 @@ function getAllPossibleActions(praxishState, actor) {
   return allPossibleActions;
 }
 
+// Given an `outcome` string and a map of `bindings` to use for grounding any
+// logic variables that appear in the `outcome`, return a fully grounded copy
+// of the `outcome` (suitable for interpretation by `performOutcome`).
+function groundOutcome(outcome, bindings) {
+  const parts = outcome.trim().split(/\s+/);
+  const op = parts[0];
+  if (op === "insert" || op === "delete") {
+    const sentence = parts[1];
+    const groundedSentence = ground(sentence, bindings);
+    const groundedOutcome = op + " " + groundedSentence;
+    return groundedOutcome;
+  }
+  else {
+    return outcome;
+  }
+}
+
+// Given a `praxishState` and a fully grounded `outcome` (i.e., one of the
+// possible consequences of an action), perform the `outcome` and return
+// the updated `praxishState`.
+function performOutcome(praxishState, outcome) {
+  const parts = outcome.trim().split(/\s+/);
+  const op = parts[0];
+  if (op === "insert") {
+    // First just perform the insertion.
+    const sentence = parts[1];
+    insert(praxishState.db, sentence);
+    // Then figure out whether we're spawning a new practice instance,
+    // and initialize the newly spawned instance if we are.
+    const sentenceParts = sentence.split(/[\.\!]/);
+    const practiceID = sentenceParts[0] === "practice" && sentenceParts[1];
+    const practiceDef = praxishState.practiceDefs[practiceID];
+    if (practiceID && !practiceDef) {
+      console.warn("Undefined practice", practiceID);
+      return praxishState;
+    }
+    const isSpawning = practiceDef && sentenceParts.length === practiceDef.roles.length + 2;
+    if (isSpawning) {
+      console.log("Spawning practice ::", sentence);
+      // If the practice definition has an `init`, run it.
+      // Note that we'll need to ground any of the practice's role variables
+      // that are used within an `init` outcome to perform that outcome.
+      if (practiceDef.init && practiceDef.init.length > 0) {
+        const roleBindings = {};
+        for (let i = 0; i < practiceDef.roles.length; i++) {
+          const roleName = practiceDef.roles[i];
+          const roleValue = sentenceParts[i + 2];
+          if (!roleValue) console.warn("Missing role value", practiceDef.id, roleName);
+          roleBindings[roleName] = roleValue;
+        }
+        for (const initOutcome of practiceDef.init) {
+          const groundedOutcome = groundOutcome(initOutcome, roleBindings);
+          performOutcome(praxishState, groundedOutcome);
+        }
+      }
+    }
+  }
+  else if (op === "delete") {
+    const sentence = parts[1];
+    retract(praxishState.db, sentence);
+  }
+  else {
+    console.warn("Bad outcome op", op, outcome);
+  }
+  return praxishState;
+}
+
 // Given a `praxishState` and an `action` (i.e., a map of bindings including
 // at least `Actor`, `practiceID`, `instanceID`, and `actionID`),
 // perform the `action` and return the updated `praxishState`.
@@ -160,21 +227,11 @@ function performAction(praxishState, action) {
   console.log("Performing action ::", action.name, action);
   const practiceDef = praxishState.practiceDefs[action.practiceID];
   const actionDef = practiceDef.actions.find(adef => adef.name === action.actionID);
-  for (const outcomeDef of actionDef.outcomes) {
-    const parts = outcomeDef.trim().split(" ");
-    const op = parts[0];
-    if (op === "insert") {
-      const sentence = ground(parts[1], action);
-      insert(praxishState.db, sentence);
-    }
-    else if (op === "delete") {
-      const sentence = ground(parts[1], action);
-      retract(praxishState.db, sentence);
-    }
-    else {
-      console.warn("Bad outcome op", op, outcome);
-    }
+  for (const outcomeDef of actionDef.outcomes || []) {
+    const outcome = groundOutcome(outcomeDef, action);
+    performOutcome(praxishState, outcome);
   }
+  return praxishState;
 }
 
 // Given a `praxishState`, determine whose turn it is to act,
