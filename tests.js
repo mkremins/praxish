@@ -128,7 +128,7 @@ const ticTacToePractice = {
   roles: ["Player1", "Player2"],
   init: [
     // Who goes first?
-    "insert practice.ticTacToe.Player1.Player2.whoseTurn!Player1",
+    "insert practice.ticTacToe.Player1.Player2.whoseTurn!Player1!Player2",
     // Who plays which piece?
     "insert practice.ticTacToe.Player1.Player2.player.Player1.piece!o",
     "insert practice.ticTacToe.Player1.Player2.player.Player2.piece!x",
@@ -148,16 +148,13 @@ const ticTacToePractice = {
       name: "[Actor]: Play [Piece] at [Row] [Col]",
       conditions: [
         // Check whether this move should be possible
-        "practice.ticTacToe.Player1.Player2.whoseTurn!Actor",
+        "practice.ticTacToe.Player1.Player2.whoseTurn!Actor!Other",
         "practice.ticTacToe.Player1.Player2.player.Actor.piece!Piece",
-        "practice.ticTacToe.Player1.Player2.board.Row.Col!empty",
-        // Grab the other player so we can make it their turn next
-        "practice.ticTacToe.Player1.Player2.player.Other",
-        "neq Actor Other"
+        "practice.ticTacToe.Player1.Player2.board.Row.Col!empty"
       ],
       outcomes: [
         "insert practice.ticTacToe.Player1.Player2.board.Row.Col!Piece",
-        "insert practice.ticTacToe.Player1.Player2.whoseTurn!Other"
+        "insert practice.ticTacToe.Player1.Player2.whoseTurn!Other!Actor"
       ]
     },
     // Declare-winner actions. These are super hacky and wrong: they were
