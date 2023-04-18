@@ -198,7 +198,7 @@ function performOutcome(praxishState, outcome) {
     }
     const isSpawning = practiceDef && sentenceParts.length === practiceDef.roles.length + 2;
     if (isSpawning) {
-      console.log("Spawning practice ::", sentence);
+      //console.log("Spawning practice ::", sentence);
       // If the practice definition has an `init`, run it.
       // Note that we'll need to ground any of the practice's role variables
       // that are used within an `init` outcome to perform that outcome.
@@ -268,7 +268,6 @@ function performOutcome(praxishState, outcome) {
 // at least `Actor`, `practiceID`, `instanceID`, and `actionID`),
 // perform the `action` and return the updated `praxishState`.
 function performAction(praxishState, action) {
-  console.log("Performing action ::", action.name, action);
   const practiceDef = praxishState.practiceDefs[action.practiceID];
   const actionDef = practiceDef.actions.find(adef => adef.name === action.actionID);
   for (const outcomeDef of actionDef.outcomes || []) {
@@ -286,13 +285,46 @@ function tick(praxishState) {
   if (praxishState.actorIdx > praxishState.allChars.length - 1) praxishState.actorIdx = 0;
   const actor = praxishState.allChars[praxishState.actorIdx];
   // Get all possible actions for the current actor.
-  const possibleActions = getAllPossibleActions(praxishState, actor);
-  // Select an action for the actor to perform. For now, action selection will just be random.
-  const action = randNth(possibleActions);
-  if (!action) {
-    console.warn("No actions to perform", actor);
+  const possibleActions = getAllPossibleActions(praxishState, actor.name);
+  // Figure out what action to perform.
+  // Actors with goals should select actions that seem to advance their goals;
+  // actors without goals can do whatever.
+  let actionToPerform = null;
+  if (actor.goals && possibleActions.length > 0) {
+    // Speculatively perform each possible action
+    // and score the outcome according to the actor's goals.
+    for (const possibleAction of possibleActions) {
+      const prevDB = clone(praxishState.db);
+      performAction(praxishState, possibleAction);
+      possibleAction.score = 0;
+      for (const goal of actor.goals) {
+        const results = query(praxishState.db, goal.conditions, {});
+        possibleAction.score += (goal.utility * results.length);
+      }
+      praxishState.db = prevDB;
+    }
+    // Select an action for the actor to perform,
+    // randomly choosing among top-scoring actions for this actor's goals.
+    possibleActions.sort((a, b) => b.score - a.score);
+    const topScore = possibleActions[0].score;
+    const firstNonTopscoringIdx = possibleActions.findIndex(pa => pa.score < topScore);
+    if (firstNonTopscoringIdx > -1) {
+      const bestScoringActions = possibleActions.slice(0, firstNonTopscoringIdx);
+      actionToPerform = randNth(bestScoringActions);
+    }
+    else {
+      actionToPerform = randNth(possibleActions);
+    }
+  }
+  else {
+    // Select a random action to perform.
+    actionToPerform = randNth(possibleActions);
+  }
+  // Perform the action, if any.
+  if (!actionToPerform) {
+    console.warn("No actions to perform", actor.name);
     return;
   }
-  // Perform the action.
-  performAction(praxishState, action);
+  console.log("Performing action ::", actionToPerform.name, actionToPerform);
+  performAction(praxishState, actionToPerform);
 }

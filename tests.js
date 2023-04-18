@@ -396,7 +396,47 @@ function doTicks(praxishState, n) {
 }
 
 const testPraxishState = createPraxishState();
-testPraxishState.allChars = ["max", "nic", "isaac"];
+testPraxishState.allChars = [
+  {
+    name: "max",
+    goals: [
+      {
+        utility: 10,
+        conditions: ["practice.ticTacToe.Player1.Player2.gameOver!max!Loser"]
+      },
+      {
+        utility: 5,
+        conditions: ["practice.tendBar.Bartender.customer.max!order!cider"]
+      },
+      {
+        utility: 5,
+        conditions: ["practice.tendBar.Bartender.customer.max!order!soda"]
+      }
+    ]
+  },
+  {
+    name: "nic",
+    goals: [
+      {
+        utility: 10,
+        conditions: ["practice.ticTacToe.Player1.Player2.gameOver!nic!Loser"]
+      },
+      {
+        utility: 5,
+        conditions: ["practice.tendBar.Bartender.customer.nic!order!beer"]
+      }
+    ]
+  },
+  {
+    name: "isaac",
+    goals: [
+      {
+        utility: 5,
+        conditions: ["not practice.tendBar.Bartender.customer.nic!order"]
+      }
+    ]
+  }
+];
 // First test with just the `greet` practice
 console.log("PRACTICE TEST: greet");
 definePractice(testPraxishState, greetPractice);
