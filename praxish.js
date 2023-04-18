@@ -165,6 +165,13 @@ function groundOutcome(outcome, bindings) {
     const groundedOutcome = op + " " + groundedSentence;
     return groundedOutcome;
   }
+  else if (op === "call") {
+    const functionName = parts[1];
+    const params = parts.slice(2);
+    const groundedParams = params.map(param => ground(param, bindings));
+    const groundedOutcome = op + " " + functionName + " " + groundedParams.join(" ");
+    return groundedOutcome;
+  }
   else {
     return outcome;
   }
@@ -213,6 +220,43 @@ function performOutcome(praxishState, outcome) {
   else if (op === "delete") {
     const sentence = parts[1];
     retract(praxishState.db, sentence);
+  }
+  else if (op === "call") {
+    // Look up the function to execute.
+    // FIXME The current lookup process has to search within each practice definition
+    // for a function with the specified name, which is unnecessarily slow.
+    // We can improve performance by building a function registry at `definePractice` time.
+    const functionName = parts[1];
+    let functionDef = null;
+    for (const practiceDef of Object.values(praxishState.practiceDefs)) {
+      const functionDefs = practiceDef.functions || [];
+      functionDef = functionDefs.find(fdef => fdef.name === functionName);
+      if (functionDef) break;
+    }
+    if (!functionDef) {
+      console.warn("Couldn't find function", functionName);
+    }
+    // Establish bindings for the function's parameters, if any.
+    const paramNames = functionDef.params || [];
+    const paramVals = parts.slice(2);
+    const paramBindings = {};
+    for (let i = 0; i < paramNames.length; i++) {
+      paramBindings[paramNames[i]] = paramVals[i];
+    }
+    // Determine which of the function's cases to execute (if any) and execute it.
+    for (const caseDef of functionDef.cases) {
+      const results = query(praxishState.db, caseDef.conditions, paramBindings);
+      if (results.length > 0) {
+        // Execute this case with the first available bindings and stop trying other cases.
+        // FIXME Only one case should be executed per `call`, right?
+        const result = results[0];
+        for (const outcomeDef of caseDef.outcomes || []) {
+          const outcome = groundOutcome(outcomeDef, result);
+          performOutcome(praxishState, outcome); // FIXME Possible infinite recursion if `call`
+        }
+        break;
+      }
+    }
   }
   else {
     console.warn("Bad outcome op", op, outcome);

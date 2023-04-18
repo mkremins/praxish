@@ -148,33 +148,23 @@ const ticTacToePractice = {
       name: "[Actor]: Play [Piece] at [Row] [Col]",
       conditions: [
         // Check whether this move should be possible
+        "not practice.ticTacToe.Player1.Player2.gameOver",
         "practice.ticTacToe.Player1.Player2.whoseTurn!Actor!Other",
         "practice.ticTacToe.Player1.Player2.player.Actor.piece!Piece",
         "practice.ticTacToe.Player1.Player2.board.Row.Col!empty"
       ],
       outcomes: [
         "insert practice.ticTacToe.Player1.Player2.board.Row.Col!Piece",
-        "insert practice.ticTacToe.Player1.Player2.whoseTurn!Other!Actor"
+        "insert practice.ticTacToe.Player1.Player2.whoseTurn!Other!Actor",
+        "call ticTacToe_checkEndConditions Player1 Player2"
       ]
     },
-    // Declare-winner actions. These are super hacky and wrong: they were
-    // originally conceived as a workaround for not having `if`/`call` yet,
-    // and there's nothing in the practice's current definition that will keep
-    // the players from *continuing* to play after the game is already decided
-    // but before one of these actions is performed.
-    // However, I kind of like the idea of "calling the game" being an action
-    // that different characters can perform: it opens the door to storyful
-    // interpretations like "conceding gracefully" and "being a sore winner".
+    // Declare-winner actions
     {
-      name: "[Actor]: Declare [Winner] as the winner",
+      name: "[Actor]: Concede gracefully",
       conditions: [
-        "practice.ticTacToe.Player1.Player2.board.top.Col!Piece",
-        "practice.ticTacToe.Player1.Player2.board.middle.Col!Piece",
-        "practice.ticTacToe.Player1.Player2.board.bottom.Col!Piece",
-        "practice.ticTacToe.Player1.Player2.player.Winner.piece!Piece",
-        // Grab the loser so we can mark them as having lost
-        "practice.ticTacToe.Player1.Player2.player.Loser",
-        "neq Winner Loser"
+        "practice.ticTacToe.Player1.Player2.gameOver!Winner!Loser",
+        "eq Actor Loser"
       ],
       outcomes: [
         "insert Winner.ship.Loser.ticTacToeMemory!won",
@@ -183,15 +173,10 @@ const ticTacToePractice = {
       ]
     },
     {
-      name: "[Actor]: Declare [Winner] as the winner",
+      name: "[Actor]: Gloat about victory",
       conditions: [
-        "practice.ticTacToe.Player1.Player2.board.Row.left!Piece",
-        "practice.ticTacToe.Player1.Player2.board.Row.center!Piece",
-        "practice.ticTacToe.Player1.Player2.board.Row.right!Piece",
-        "practice.ticTacToe.Player1.Player2.player.Winner.piece!Piece",
-        // Grab the loser so we can mark them as having lost
-        "practice.ticTacToe.Player1.Player2.player.Loser",
-        "neq Winner Loser"
+        "practice.ticTacToe.Player1.Player2.gameOver!Winner!Loser",
+        "eq Actor Winner"
       ],
       outcomes: [
         "insert Winner.ship.Loser.ticTacToeMemory!won",
@@ -200,65 +185,11 @@ const ticTacToePractice = {
       ]
     },
     {
-      name: "[Actor]: Declare [Winner] as the winner",
+      name: "[Actor]: Remark on the pointlessness of tic-tac-toe",
       conditions: [
-        "practice.ticTacToe.Player1.Player2.board.top.left!Piece",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!Piece",
-        "practice.ticTacToe.Player1.Player2.board.bottom.right!Piece",
-        "practice.ticTacToe.Player1.Player2.player.Winner.piece!Piece",
-        // Grab the loser so we can mark them as having lost
-        "practice.ticTacToe.Player1.Player2.player.Loser",
-        "neq Winner Loser"
-      ],
-      outcomes: [
-        "insert Winner.ship.Loser.ticTacToeMemory!won",
-        "insert Loser.ship.Winner.ticTacToeMemory!lost",
-        "delete practice.ticTacToe.Player1.Player2"
-      ]
-    },
-    {
-      name: "[Actor]: Declare [Winner] as the winner",
-      conditions: [
-        "practice.ticTacToe.Player1.Player2.board.top.right!Piece",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!Piece",
-        "practice.ticTacToe.Player1.Player2.board.bottom.left!Piece",
-        "practice.ticTacToe.Player1.Player2.player.Winner.piece!Piece",
-        // Grab the loser so we can mark them as having lost
-        "practice.ticTacToe.Player1.Player2.player.Loser",
-        "neq Winner Loser"
-      ],
-      outcomes: [
-        "insert Winner.ship.Loser.ticTacToeMemory!won",
-        "insert Loser.ship.Winner.ticTacToeMemory!lost",
-        "delete practice.ticTacToe.Player1.Player2"
-      ]
-    },
-    // Declare-tie actions. These are actually even worse.
-    {
-      name: "[Actor]: Declare the game tied",
-      conditions: [
-        // Check that every row has both piece types in it
-        "practice.ticTacToe.Player1.Player2.board.top.C1!x",
-        "practice.ticTacToe.Player1.Player2.board.top.C2!o",
-        "practice.ticTacToe.Player1.Player2.board.middle.C3!x",
-        "practice.ticTacToe.Player1.Player2.board.middle.C4!o",
-        "practice.ticTacToe.Player1.Player2.board.bottom.C5!x",
-        "practice.ticTacToe.Player1.Player2.board.bottom.C6!o",
-        // Check that every column has both piece types in it
-        "practice.ticTacToe.Player1.Player2.board.R1.left!x",
-        "practice.ticTacToe.Player1.Player2.board.R2.left!o",
-        "practice.ticTacToe.Player1.Player2.board.R3.center!x",
-        "practice.ticTacToe.Player1.Player2.board.R4.center!o",
-        "practice.ticTacToe.Player1.Player2.board.R5.right!x",
-        "practice.ticTacToe.Player1.Player2.board.R6.right!o",
-        // Check that both *diagonals* have both piece types in 'em
-        // (two corners per tie-game action)
-        "practice.ticTacToe.Player1.Player2.board.top.left!P1",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!P2",
-        "neq P1 P2", "neq P1 empty", "neq P2 empty",
-        "practice.ticTacToe.Player1.Player2.board.top.right!P3",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!P4",
-        "neq P3 P4", "neq P3 empty", "neq P4 empty",
+        "practice.ticTacToe.Player1.Player2.gameOver!tie",
+        "neq Actor Winner",
+        "neq Actor Loser"
       ],
       outcomes: [
         "insert Player1.ship.Player2.ticTacToeMemory!tied",
@@ -266,100 +197,185 @@ const ticTacToePractice = {
         "delete practice.ticTacToe.Player1.Player2"
       ]
     },
+  ],
+  functions: [
     {
-      name: "[Actor]: Declare the game tied",
-      conditions: [
-        // Check that every row has both piece types in it
-        "practice.ticTacToe.Player1.Player2.board.top.C1!x",
-        "practice.ticTacToe.Player1.Player2.board.top.C2!o",
-        "practice.ticTacToe.Player1.Player2.board.middle.C3!x",
-        "practice.ticTacToe.Player1.Player2.board.middle.C4!o",
-        "practice.ticTacToe.Player1.Player2.board.bottom.C5!x",
-        "practice.ticTacToe.Player1.Player2.board.bottom.C6!o",
-        // Check that every column has both piece types in it
-        "practice.ticTacToe.Player1.Player2.board.R1.left!x",
-        "practice.ticTacToe.Player1.Player2.board.R2.left!o",
-        "practice.ticTacToe.Player1.Player2.board.R3.center!x",
-        "practice.ticTacToe.Player1.Player2.board.R4.center!o",
-        "practice.ticTacToe.Player1.Player2.board.R5.right!x",
-        "practice.ticTacToe.Player1.Player2.board.R6.right!o",
-        // Check that both *diagonals* have both piece types in 'em
-        // (two corners per tie-game action)
-        "practice.ticTacToe.Player1.Player2.board.top.right!P1",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!P2",
-        "neq P1 P2", "neq P1 empty", "neq P2 empty",
-        "practice.ticTacToe.Player1.Player2.board.bottom.right!P3",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!P4",
-        "neq P3 P4", "neq P3 empty", "neq P4 empty",
-      ],
-      outcomes: [
-        "insert Player1.ship.Player2.ticTacToeMemory!tied",
-        "insert Player2.ship.Player1.ticTacToeMemory!tied",
-        "delete practice.ticTacToe.Player1.Player2"
-      ]
-    },
-    {
-      name: "[Actor]: Declare the game tied",
-      conditions: [
-        // Check that every row has both piece types in it
-        "practice.ticTacToe.Player1.Player2.board.top.C1!x",
-        "practice.ticTacToe.Player1.Player2.board.top.C2!o",
-        "practice.ticTacToe.Player1.Player2.board.middle.C3!x",
-        "practice.ticTacToe.Player1.Player2.board.middle.C4!o",
-        "practice.ticTacToe.Player1.Player2.board.bottom.C5!x",
-        "practice.ticTacToe.Player1.Player2.board.bottom.C6!o",
-        // Check that every column has both piece types in it
-        "practice.ticTacToe.Player1.Player2.board.R1.left!x",
-        "practice.ticTacToe.Player1.Player2.board.R2.left!o",
-        "practice.ticTacToe.Player1.Player2.board.R3.center!x",
-        "practice.ticTacToe.Player1.Player2.board.R4.center!o",
-        "practice.ticTacToe.Player1.Player2.board.R5.right!x",
-        "practice.ticTacToe.Player1.Player2.board.R6.right!o",
-        // Check that both *diagonals* have both piece types in 'em
-        // (two corners per tie-game action)
-        "practice.ticTacToe.Player1.Player2.board.bottom.right!P1",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!P2",
-        "neq P1 P2", "neq P1 empty", "neq P2 empty",
-        "practice.ticTacToe.Player1.Player2.board.bottom.left!P3",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!P4",
-        "neq P3 P4", "neq P3 empty", "neq P4 empty",
-      ],
-      outcomes: [
-        "insert Player1.ship.Player2.ticTacToeMemory!tied",
-        "insert Player2.ship.Player1.ticTacToeMemory!tied",
-        "delete practice.ticTacToe.Player1.Player2"
-      ]
-    },
-    {
-      name: "[Actor]: Declare the game tied",
-      conditions: [
-        // Check that every row has both piece types in it
-        "practice.ticTacToe.Player1.Player2.board.top.C1!x",
-        "practice.ticTacToe.Player1.Player2.board.top.C2!o",
-        "practice.ticTacToe.Player1.Player2.board.middle.C3!x",
-        "practice.ticTacToe.Player1.Player2.board.middle.C4!o",
-        "practice.ticTacToe.Player1.Player2.board.bottom.C5!x",
-        "practice.ticTacToe.Player1.Player2.board.bottom.C6!o",
-        // Check that every column has both piece types in it
-        "practice.ticTacToe.Player1.Player2.board.R1.left!x",
-        "practice.ticTacToe.Player1.Player2.board.R2.left!o",
-        "practice.ticTacToe.Player1.Player2.board.R3.center!x",
-        "practice.ticTacToe.Player1.Player2.board.R4.center!o",
-        "practice.ticTacToe.Player1.Player2.board.R5.right!x",
-        "practice.ticTacToe.Player1.Player2.board.R6.right!o",
-        // Check that both *diagonals* have both piece types in 'em
-        // (two corners per tie-game action)
-        "practice.ticTacToe.Player1.Player2.board.bottom.left!P1",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!P2",
-        "neq P1 P2", "neq P1 empty", "neq P2 empty",
-        "practice.ticTacToe.Player1.Player2.board.top.left!P3",
-        "practice.ticTacToe.Player1.Player2.board.middle.center!P4",
-        "neq P3 P4", "neq P3 empty", "neq P4 empty",
-      ],
-      outcomes: [
-        "insert Player1.ship.Player2.ticTacToeMemory!tied",
-        "insert Player2.ship.Player1.ticTacToeMemory!tied",
-        "delete practice.ticTacToe.Player1.Player2"
+      name: "ticTacToe_checkEndConditions",
+      params: ["Player1", "Player2"],
+      cases: [
+        {
+          conditions: [
+            "practice.ticTacToe.Player1.Player2.board.top.Col!Piece",
+            "practice.ticTacToe.Player1.Player2.board.middle.Col!Piece",
+            "practice.ticTacToe.Player1.Player2.board.bottom.Col!Piece",
+            "practice.ticTacToe.Player1.Player2.player.Winner.piece!Piece",
+            // Grab the loser so we can mark them as having lost
+            "practice.ticTacToe.Player1.Player2.player.Loser",
+            "neq Winner Loser"
+          ],
+          outcomes: [
+            "insert practice.ticTacToe.Player1.Player2.gameOver!Winner!Loser"
+          ]
+        },
+        {
+          conditions: [
+            "practice.ticTacToe.Player1.Player2.board.Row.left!Piece",
+            "practice.ticTacToe.Player1.Player2.board.Row.center!Piece",
+            "practice.ticTacToe.Player1.Player2.board.Row.right!Piece",
+            "practice.ticTacToe.Player1.Player2.player.Winner.piece!Piece",
+            // Grab the loser so we can mark them as having lost
+            "practice.ticTacToe.Player1.Player2.player.Loser",
+            "neq Winner Loser"
+          ],
+          outcomes: [
+            "insert practice.ticTacToe.Player1.Player2.gameOver!Winner!Loser"
+          ]
+        },
+        {
+          conditions: [
+            "practice.ticTacToe.Player1.Player2.board.top.left!Piece",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!Piece",
+            "practice.ticTacToe.Player1.Player2.board.bottom.right!Piece",
+            "practice.ticTacToe.Player1.Player2.player.Winner.piece!Piece",
+            // Grab the loser so we can mark them as having lost
+            "practice.ticTacToe.Player1.Player2.player.Loser",
+            "neq Winner Loser"
+          ],
+          outcomes: [
+            "insert practice.ticTacToe.Player1.Player2.gameOver!Winner!Loser"
+          ]
+        },
+        {
+          conditions: [
+            "practice.ticTacToe.Player1.Player2.board.top.right!Piece",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!Piece",
+            "practice.ticTacToe.Player1.Player2.board.bottom.left!Piece",
+            "practice.ticTacToe.Player1.Player2.player.Winner.piece!Piece",
+            // Grab the loser so we can mark them as having lost
+            "practice.ticTacToe.Player1.Player2.player.Loser",
+            "neq Winner Loser"
+          ],
+          outcomes: [
+            "insert practice.ticTacToe.Player1.Player2.gameOver!Winner!Loser"
+          ]
+        },
+        // Tie-game cases
+        {
+          conditions: [
+            // Check that every row has both piece types in it
+            "practice.ticTacToe.Player1.Player2.board.top.C1!x",
+            "practice.ticTacToe.Player1.Player2.board.top.C2!o",
+            "practice.ticTacToe.Player1.Player2.board.middle.C3!x",
+            "practice.ticTacToe.Player1.Player2.board.middle.C4!o",
+            "practice.ticTacToe.Player1.Player2.board.bottom.C5!x",
+            "practice.ticTacToe.Player1.Player2.board.bottom.C6!o",
+            // Check that every column has both piece types in it
+            "practice.ticTacToe.Player1.Player2.board.R1.left!x",
+            "practice.ticTacToe.Player1.Player2.board.R2.left!o",
+            "practice.ticTacToe.Player1.Player2.board.R3.center!x",
+            "practice.ticTacToe.Player1.Player2.board.R4.center!o",
+            "practice.ticTacToe.Player1.Player2.board.R5.right!x",
+            "practice.ticTacToe.Player1.Player2.board.R6.right!o",
+            // Check that both *diagonals* have both piece types in 'em
+            // (two corners per tie-game action)
+            "practice.ticTacToe.Player1.Player2.board.top.left!P1",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!P2",
+            "neq P1 P2", "neq P1 empty", "neq P2 empty",
+            "practice.ticTacToe.Player1.Player2.board.top.right!P3",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!P4",
+            "neq P3 P4", "neq P3 empty", "neq P4 empty",
+          ],
+          outcomes: [
+            "insert practice.ticTacToe.Player1.Player2.gameOver!tie"
+          ]
+        },
+        {
+          conditions: [
+            // Check that every row has both piece types in it
+            "practice.ticTacToe.Player1.Player2.board.top.C1!x",
+            "practice.ticTacToe.Player1.Player2.board.top.C2!o",
+            "practice.ticTacToe.Player1.Player2.board.middle.C3!x",
+            "practice.ticTacToe.Player1.Player2.board.middle.C4!o",
+            "practice.ticTacToe.Player1.Player2.board.bottom.C5!x",
+            "practice.ticTacToe.Player1.Player2.board.bottom.C6!o",
+            // Check that every column has both piece types in it
+            "practice.ticTacToe.Player1.Player2.board.R1.left!x",
+            "practice.ticTacToe.Player1.Player2.board.R2.left!o",
+            "practice.ticTacToe.Player1.Player2.board.R3.center!x",
+            "practice.ticTacToe.Player1.Player2.board.R4.center!o",
+            "practice.ticTacToe.Player1.Player2.board.R5.right!x",
+            "practice.ticTacToe.Player1.Player2.board.R6.right!o",
+            // Check that both *diagonals* have both piece types in 'em
+            // (two corners per tie-game action)
+            "practice.ticTacToe.Player1.Player2.board.top.right!P1",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!P2",
+            "neq P1 P2", "neq P1 empty", "neq P2 empty",
+            "practice.ticTacToe.Player1.Player2.board.bottom.right!P3",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!P4",
+            "neq P3 P4", "neq P3 empty", "neq P4 empty",
+          ],
+          outcomes: [
+            "insert practice.ticTacToe.Player1.Player2.gameOver!tie"
+          ]
+        },
+        {
+          conditions: [
+            // Check that every row has both piece types in it
+            "practice.ticTacToe.Player1.Player2.board.top.C1!x",
+            "practice.ticTacToe.Player1.Player2.board.top.C2!o",
+            "practice.ticTacToe.Player1.Player2.board.middle.C3!x",
+            "practice.ticTacToe.Player1.Player2.board.middle.C4!o",
+            "practice.ticTacToe.Player1.Player2.board.bottom.C5!x",
+            "practice.ticTacToe.Player1.Player2.board.bottom.C6!o",
+            // Check that every column has both piece types in it
+            "practice.ticTacToe.Player1.Player2.board.R1.left!x",
+            "practice.ticTacToe.Player1.Player2.board.R2.left!o",
+            "practice.ticTacToe.Player1.Player2.board.R3.center!x",
+            "practice.ticTacToe.Player1.Player2.board.R4.center!o",
+            "practice.ticTacToe.Player1.Player2.board.R5.right!x",
+            "practice.ticTacToe.Player1.Player2.board.R6.right!o",
+            // Check that both *diagonals* have both piece types in 'em
+            // (two corners per tie-game action)
+            "practice.ticTacToe.Player1.Player2.board.bottom.right!P1",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!P2",
+            "neq P1 P2", "neq P1 empty", "neq P2 empty",
+            "practice.ticTacToe.Player1.Player2.board.bottom.left!P3",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!P4",
+            "neq P3 P4", "neq P3 empty", "neq P4 empty",
+          ],
+          outcomes: [
+            "insert practice.ticTacToe.Player1.Player2.gameOver!tie"
+          ]
+        },
+        {
+          conditions: [
+            // Check that every row has both piece types in it
+            "practice.ticTacToe.Player1.Player2.board.top.C1!x",
+            "practice.ticTacToe.Player1.Player2.board.top.C2!o",
+            "practice.ticTacToe.Player1.Player2.board.middle.C3!x",
+            "practice.ticTacToe.Player1.Player2.board.middle.C4!o",
+            "practice.ticTacToe.Player1.Player2.board.bottom.C5!x",
+            "practice.ticTacToe.Player1.Player2.board.bottom.C6!o",
+            // Check that every column has both piece types in it
+            "practice.ticTacToe.Player1.Player2.board.R1.left!x",
+            "practice.ticTacToe.Player1.Player2.board.R2.left!o",
+            "practice.ticTacToe.Player1.Player2.board.R3.center!x",
+            "practice.ticTacToe.Player1.Player2.board.R4.center!o",
+            "practice.ticTacToe.Player1.Player2.board.R5.right!x",
+            "practice.ticTacToe.Player1.Player2.board.R6.right!o",
+            // Check that both *diagonals* have both piece types in 'em
+            // (two corners per tie-game action)
+            "practice.ticTacToe.Player1.Player2.board.bottom.left!P1",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!P2",
+            "neq P1 P2", "neq P1 empty", "neq P2 empty",
+            "practice.ticTacToe.Player1.Player2.board.top.left!P3",
+            "practice.ticTacToe.Player1.Player2.board.middle.center!P4",
+            "neq P3 P4", "neq P3 empty", "neq P4 empty",
+          ],
+          outcomes: [
+            "insert practice.ticTacToe.Player1.Player2.gameOver!tie"
+          ]
+        }
       ]
     }
   ]
