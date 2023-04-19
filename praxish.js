@@ -287,10 +287,18 @@ function tick(praxishState) {
   // Get all possible actions for the current actor.
   const possibleActions = getAllPossibleActions(praxishState, actor.name);
   // Figure out what action to perform.
-  // Actors with goals should select actions that seem to advance their goals;
+  // Practice-bound actors should perform random available actions from their practice;
+  // actors with goals should select actions that seem to advance their goals;
   // actors without goals can do whatever.
   let actionToPerform = null;
-  if (actor.goals && possibleActions.length > 0) {
+  if (actor.boundToPractice) {
+    // Filter possible actions to just those from the bound practice.
+    // FIXME We should probably move this logic into `getAllPossibleActions`
+    // so that we don't waste time generating actions that will never be performed.
+    const practiceActions = possibleActions.filter(pa => pa.practiceID === actor.boundToPractice);
+    actionToPerform = randNth(practiceActions);
+  }
+  else if (actor.goals && possibleActions.length > 0) {
     // Speculatively perform each possible action
     // and score the outcome according to the actor's goals.
     for (const possibleAction of possibleActions) {

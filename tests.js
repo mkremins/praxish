@@ -32,6 +32,55 @@ const greetPractice = {
   ]
 };
 
+const jukeboxPractice = {
+  // TODO Add themes for different song parts,
+  // an action for reflecting on themes of the currently playing song part,
+  // maybe agent preferences for specific songs?
+  id: "jukebox",
+  name: "A jukebox is here",
+  data: [
+    "song.closingStar",
+    "songPart.prebeginning!beginning",
+    "songPart.beginning!middle",
+    "songPart.middle!end"
+  ],
+  roles: ["JukeboxGhost"],
+  actions: [
+    {
+      name: "[Actor]: Queue up [Song] on the jukebox",
+      conditions: [
+        "not practice.jukebox.JukeboxGhost.playing",
+        "practiceData.jukebox.song.Song",
+        "neq Actor JukeboxGhost"
+      ],
+      outcomes: [
+        "insert practice.jukebox.JukeboxGhost.playing!Song!prebeginning"
+      ]
+    },
+    {
+      name: "[Actor]: Play [Part] of [Song]",
+      conditions: [
+        "eq Actor JukeboxGhost",
+        "practice.jukebox.JukeboxGhost.playing!Song!PrevPart",
+        "practiceData.jukebox.songPart.PrevPart!Part"
+      ],
+      outcomes: [
+        "insert practice.jukebox.JukeboxGhost.playing!Song!Part"
+      ]
+    },
+    {
+      name: "[Actor]: Finish playing [Song]",
+      conditions: [
+        "eq Actor JukeboxGhost",
+        "practice.jukebox.JukeboxGhost.playing!Song!end"
+      ],
+      outcomes: [
+        "delete practice.jukebox.JukeboxGhost.playing"
+      ]
+    }
+  ]
+};
+
 const tendBarPractice = {
   id: "tendBar",
   name: "[Bartender] is tending bar",
@@ -382,7 +431,6 @@ const ticTacToePractice = {
 };
 
 // TODO Implement more practices:
-// - jukebox
 // - knowitalls
 // - darthVader
 
@@ -435,6 +483,10 @@ testPraxishState.allChars = [
         conditions: ["not practice.tendBar.Bartender.customer.nic!order"]
       }
     ]
+  },
+  {
+    name: "jukebox",
+    boundToPractice: "jukebox"
   }
 ];
 // First test with just the `greet` practice
@@ -442,14 +494,19 @@ console.log("PRACTICE TEST: greet");
 definePractice(testPraxishState, greetPractice);
 performOutcome(testPraxishState, "insert practice.greet.max.isaac");
 performOutcome(testPraxishState, "insert practice.greet.nic.max");
-doTicks(testPraxishState, 3);
+doTicks(testPraxishState, 4);
 // Then introduce and test with the `tendBar` practice
 console.log("PRACTICE TEST: tendBar");
 definePractice(testPraxishState, tendBarPractice);
 performOutcome(testPraxishState, "insert practice.tendBar.isaac");
-doTicks(testPraxishState, 12);
-// And now test `ticTacToe` concurrently with the bar practice
+doTicks(testPraxishState, 16);
+// Then test `ticTacToe` concurrently with the bar practice
 console.log("PRACTICE TEST: ticTacToe");
 definePractice(testPraxishState, ticTacToePractice);
 performOutcome(testPraxishState, "insert practice.ticTacToe.max.nic");
+doTicks(testPraxishState, 32);
+// Then test `jukebox` concurrently with the others
+console.log("PRACTICE TEST: jukebox");
+definePractice(testPraxishState, jukeboxPractice);
+performOutcome(testPraxishState, "insert practice.jukebox.jukebox");
 doTicks(testPraxishState, 24);
