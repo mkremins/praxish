@@ -12,7 +12,7 @@ function randNth(items) {
 function renderText(praxishState, template, bindings) {
   let outputText = template;
   for (const [key, value] of Object.entries(bindings)) {
-    outputText = outputText.replaceAll(`[${key}]`, lookupName(praxishState, value));
+    outputText = outputText.replaceAll(`[${key}]`, () => lookupName(praxishState, value));
   }
   return outputText;
 }
