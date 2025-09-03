@@ -3,15 +3,34 @@ function randNth(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-// Given a text `template` to render and a map of `bindings` to swap in,
-// return a copy of the `template` with all `[SquareBracketed]` variables
+// Given a `praxishState`, text `template` to render and
+// a map of `bindings` to swap in, return a copy of the
+// `template` with all `[SquareBracketed]` variables
 // replaced by the corresponding value from `bindings`.
-function renderText(template, bindings) {
+// If any of the `bindings` is an actor `id` in `praxishState`,
+// it will be substituted for the actor's `name`.
+function renderText(praxishState, template, bindings) {
   let outputText = template;
   for (const [key, value] of Object.entries(bindings)) {
-    outputText = outputText.replaceAll(`[${key}]`, value);
+    outputText = outputText.replaceAll(`[${key}]`, lookupName(praxishState, value));
   }
   return outputText;
+}
+
+// Given a `praxishState`, if the `id` corresponds to
+// an actor, return that actor's `name` (or capitalise the first
+// letter of the `id` if they don't have one).
+// If `id` doesn't belong to an actor, return it unchanged.
+function lookupName(praxishState, id) {
+  const actor = praxishState.allChars.find(actor => actor.id === id);
+  if (actor) {
+    // default to capitalising the id if the actor has no name
+    const fallbackName = id.at(0).toUpperCase() + id.slice(1);
+    return actor.name || fallbackName;
+  }
+  // not the id of an actor: leave it unchanged
+  return id;
+
 }
 
 // Create and return a fresh "Praxish state": a wrapper object bundling up
@@ -143,7 +162,7 @@ function getAllPossibleActions(praxishState, actor) {
           action.instanceID = instanceID;
           action.actionID = actionIndex;
           // Swap variable values into the action name template.
-          action.name = renderText(actionDef.name, action);
+          action.name = renderText(praxishState, actionDef.name, action);
           // Add this possible action to the list of all possible actions.
           allPossibleActions.push(action);
         }
@@ -285,7 +304,7 @@ function tick(praxishState) {
   if (praxishState.actorIdx > praxishState.allChars.length - 1) praxishState.actorIdx = 0;
   const actor = praxishState.allChars[praxishState.actorIdx];
   // Get all possible actions for the current actor.
-  const possibleActions = getAllPossibleActions(praxishState, actor.name);
+  const possibleActions = getAllPossibleActions(praxishState, actor.id);
   // Figure out what action to perform.
   // Practice-bound actors should perform random available actions from their practice;
   // actors with goals should select actions that seem to advance their goals;
@@ -330,7 +349,7 @@ function tick(praxishState) {
   }
   // Perform the action, if any.
   if (!actionToPerform) {
-    console.warn("No actions to perform", actor.name);
+    console.warn("No actions to perform", actor.id);
     return;
   }
   console.log("Performing action ::", actionToPerform.name, actionToPerform);

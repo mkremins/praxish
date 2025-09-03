@@ -446,7 +446,7 @@ function doTicks(praxishState, n) {
 const testPraxishState = createPraxishState();
 testPraxishState.allChars = [
   {
-    name: "max",
+    id: "max",
     goals: [
       {
         utility: 10,
@@ -463,7 +463,7 @@ testPraxishState.allChars = [
     ]
   },
   {
-    name: "nic",
+    id: "nic",
     goals: [
       {
         utility: 10,
@@ -476,7 +476,7 @@ testPraxishState.allChars = [
     ]
   },
   {
-    name: "isaac",
+    id: "isaac",
     goals: [
       {
         utility: 5,
@@ -485,7 +485,7 @@ testPraxishState.allChars = [
     ]
   },
   {
-    name: "jukebox",
+    id: "jukebox",
     boundToPractice: "jukebox"
   }
 ];
