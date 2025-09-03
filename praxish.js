@@ -133,7 +133,7 @@ function getAllPossibleActions(praxishState, actor) {
     for (const instance of instances) {
       // Get all possible actions for this actor from this instance.
       const instanceID = ground(instancesQuery, instance);
-      for (const actionDef of practiceDef.actions) {
+      for (const [actionIndex, actionDef] of practiceDef.actions.entries()) {
         // Unify this action's conditions with the DB and previous bindings.
         const possibleActions = query(praxishState.db, actionDef.conditions, instance);
         for (const action of possibleActions) {
@@ -141,7 +141,7 @@ function getAllPossibleActions(praxishState, actor) {
           // practice instance, and action definition.
           action.practiceID = practiceID;
           action.instanceID = instanceID;
-          action.actionID = actionDef.name;
+          action.actionID = actionIndex;
           // Swap variable values into the action name template.
           action.name = renderText(actionDef.name, action);
           // Add this possible action to the list of all possible actions.
@@ -269,7 +269,7 @@ function performOutcome(praxishState, outcome) {
 // perform the `action` and return the updated `praxishState`.
 function performAction(praxishState, action) {
   const practiceDef = praxishState.practiceDefs[action.practiceID];
-  const actionDef = practiceDef.actions.find(adef => adef.name === action.actionID);
+  const actionDef = practiceDef.actions.at(action.actionID);
   for (const outcomeDef of actionDef.outcomes || []) {
     const outcome = groundOutcome(outcomeDef, action);
     performOutcome(praxishState, outcome);
