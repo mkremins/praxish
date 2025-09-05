@@ -18,7 +18,7 @@ The contents of this repo are described primarily in our [AIIDE 2023 paper](http
 The [artifact](https://github.com/mkremins/praxish/releases/tag/aiide-23) associated with this paper is probably the best place to get started.
 
 ## What else is out there?
-More recently, Praxish development has continued in the [mkremins/pwim](mkremins/pwim) repo, which offers several improvements over the version of Praxish we initially released:
+More recently, Praxish development has continued in the [mkremins/pwim](https://github.com/mkremins/pwim) repo, which offers several improvements over the version of Praxish we initially released:
 
 - An [interactive demo project](https://mkremins.github.io/pwim/) that allows you to explore a small storyworld simulated by Praxish
 - A more modularized codebase, with key Praxish functions mostly attached to a top-level `Praxish` module object rather than dumped unceremoniously into the global JavaScript namespace
