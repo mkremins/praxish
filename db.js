@@ -1,16 +1,9 @@
-// Return a (deep) clone of any JSON-compatible `obj`.
-function clone(obj) {
-  return JSON.parse(JSON.stringify(obj));
-}
-
-// Return whether the character `c` is an uppercase letter.
-function isUppercase(c) {
-  return /[A-Z]/.test(c);
-}
+// Declare the DB module to which API functions will be attached.
+const DB = {};
 
 // Given `part` of an exclusion logic sentence,
 // return whether this `part` represents a variable or a constant.
-function isVariable(part) {
+DB.isVariable = function(part) {
   return isUppercase(part[0]);
 }
 
@@ -18,12 +11,12 @@ function isVariable(part) {
 // containing previously established assignments of logic variables to values,
 // return a list of updated `bindings` maps in which each map represents
 // a possible internally consistent assignment of logic variables to values.
-function unify(sentence, db, bindings) {
+DB.unify = function(sentence, db, bindings) {
   let possibleWorlds = [{subtree: db, bindings: bindings}];
   const parts = sentence.trim().split(/[\.\!]/);
   for (const part of parts) {
     const nextPWs = [];
-    const partIsVar = isVariable(part); // Is this logic sentence part a variable or constant?
+    const partIsVar = DB.isVariable(part); // Is this logic sentence part a variable or constant?
     for (const pw of possibleWorlds) {
       const branchName = partIsVar ? pw.bindings[part] : part;
       if (partIsVar && !branchName) {
@@ -60,12 +53,12 @@ function unify(sentence, db, bindings) {
 // Given a list of exclusion logic `sentences` and a `db`,
 // return a list of `bindings` maps in which each map represents
 // a possible internally consistent assignment of logic variables to values.
-function unifyAll(sentences, db) {
+DB.unifyAll = function(sentences, db) {
   let bindingsSets = [{}];
   for (const sentence of sentences) {
     const nextBindingsSets = [];
     for (const bindings of bindingsSets) {
-      const newBindingsSets = unify(sentence, db, bindings);
+      const newBindingsSets = DB.unify(sentence, db, bindings);
       for (const nextBindings of newBindingsSets) {
         nextBindingsSets.push(nextBindings);
       }
@@ -77,7 +70,7 @@ function unifyAll(sentences, db) {
 
 // Given a single exclusion logic `sentence` (containing no logic variables)
 // and a `db`, insert the `sentence` into the `db` and return the `db`.
-function insert(db, sentence) {
+DB.insert = function(db, sentence) {
   let subtree = db;
   const parts = sentence.trim().match(/[^\.\!]+.?/g);
   for (const part of parts) {
@@ -105,7 +98,7 @@ function insert(db, sentence) {
 
 // Given a single exclusion logic `sentence` (containing no logic variables)
 // and a `db`, retract the `sentence` from the `db` and return the `db`.
-function retract(db, sentence) {
+DB.retract = function(db, sentence) {
   let subtree = db;
   const parts = sentence.trim().split(/[\.\!]/);
   for (const part of parts.slice(0, -1)) {
@@ -120,10 +113,10 @@ function retract(db, sentence) {
 // FIXME The returned sentences use only . (and never !),
 // because we don't actually track cardinality in the current DB format.
 // We might want to add some sort of tracking for this in the future?
-function dbToSentences(db) {
+DB.dbToSentences = function(db) {
   const allSentences = [];
   for (const key of Object.keys(db)) {
-    const subtreeSentences = dbToSentences(db[key]).map(s => `${key}.${s}`);
+    const subtreeSentences = DB.dbToSentences(db[key]).map(s => `${key}.${s}`);
     for (const sentence of [key].concat(subtreeSentences)) {
       allSentences.push(sentence);
     }
@@ -134,10 +127,10 @@ function dbToSentences(db) {
 // Given an exclusion logic `sentence` and a map of `bindings`,
 // return a grounded version of the `sentence` with variables
 // from the keys of `bindings` replaced by their bound values.
-function ground(sentence, bindings) {
+DB.ground = function(sentence, bindings) {
   const parts = sentence.trim().match(/[^\.\!]+.?/g);
   const groundedParts = parts.map(part => {
-    if (!isVariable(part)) return part;
+    if (!DB.isVariable(part)) return part;
     const lastChar = part.slice(-1)[0];
     const hasPunct = lastChar === "!" || lastChar === ".";
     const nonPunctPart = hasPunct ? part.slice(0, -1) : part;

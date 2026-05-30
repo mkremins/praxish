@@ -1,15 +1,15 @@
 /// Test basic DB functionality. Does insertion, querying, and deletion work?
 
 const testDB = {};
-insert(testDB, "foo.bar.baz");
-insert(testDB, "foo.bar.woof");
-insert(testDB, "foo.meow.woof");
-insert(testDB, "fizz.buzz.foo");
-insert(testDB, "some.other.woof");
-console.log(dbToSentences(testDB));
-console.log(unifyAll(["X.Y.woof", "fizz.buzz.X"], testDB));
-retract(testDB, "foo.bar");
-console.log(dbToSentences(testDB));
+DB.insert(testDB, "foo.bar.baz");
+DB.insert(testDB, "foo.bar.woof");
+DB.insert(testDB, "foo.meow.woof");
+DB.insert(testDB, "fizz.buzz.foo");
+DB.insert(testDB, "some.other.woof");
+console.log(DB.dbToSentences(testDB));
+console.log(DB.unifyAll(["X.Y.woof", "fizz.buzz.X"], testDB));
+DB.retract(testDB, "foo.bar");
+console.log(DB.dbToSentences(testDB));
 
 /// Define some practices for testing Praxish proper.
 
@@ -434,6 +434,68 @@ const ticTacToePractice = {
 // - knowitalls
 // - darthVader
 
+/// Define a minimum viable top-level game loop...
+
+// Given a `praxishState`, determine whose turn it is to act,
+// select an action for that character to perform, and perform the action.
+function tick(praxishState) {
+  // Figure out whose turn it is to act. For now, turntaking will just be simple round-robin.
+  praxishState.actorIdx += 1;
+  if (praxishState.actorIdx > praxishState.allChars.length - 1) praxishState.actorIdx = 0;
+  const actor = praxishState.allChars[praxishState.actorIdx];
+  // Get all possible actions for the current actor.
+  const possibleActions = Praxish.getAllPossibleActions(praxishState, actor.name);
+  // Figure out what action to perform.
+  // Practice-bound actors should perform random available actions from their practice;
+  // actors with goals should select actions that seem to advance their goals;
+  // actors without goals can do whatever.
+  let actionToPerform = null;
+  if (actor.boundToPractice) {
+    // Filter possible actions to just those from the bound practice.
+    // FIXME We should probably move this logic into `getAllPossibleActions`
+    // so that we don't waste time generating actions that will never be performed.
+    const practiceActions = possibleActions.filter(pa => pa.practiceID === actor.boundToPractice);
+    actionToPerform = randNth(practiceActions);
+  }
+  else if (actor.goals && possibleActions.length > 0) {
+    // Speculatively perform each possible action
+    // and score the outcome according to the actor's goals.
+    for (const possibleAction of possibleActions) {
+      const prevDB = clone(praxishState.db);
+      Praxish.performAction(praxishState, possibleAction);
+      possibleAction.score = 0;
+      for (const goal of actor.goals) {
+        const results = Praxish.query(praxishState.db, goal.conditions, {});
+        possibleAction.score += (goal.utility * results.length);
+      }
+      praxishState.db = prevDB;
+    }
+    // Select an action for the actor to perform,
+    // randomly choosing among top-scoring actions for this actor's goals.
+    possibleActions.sort((a, b) => b.score - a.score);
+    const topScore = possibleActions[0].score;
+    const firstNonTopscoringIdx = possibleActions.findIndex(pa => pa.score < topScore);
+    if (firstNonTopscoringIdx > -1) {
+      const bestScoringActions = possibleActions.slice(0, firstNonTopscoringIdx);
+      actionToPerform = randNth(bestScoringActions);
+    }
+    else {
+      actionToPerform = randNth(possibleActions);
+    }
+  }
+  else {
+    // Select a random action to perform.
+    actionToPerform = randNth(possibleActions);
+  }
+  // Perform the action, if any.
+  if (!actionToPerform) {
+    console.warn("No actions to perform", actor.name);
+    return;
+  }
+  console.log("Performing action ::", actionToPerform.name, actionToPerform);
+  Praxish.performAction(praxishState, actionToPerform);
+}
+
 /// Test Praxish: initialize a `testPraxishState`,
 /// yeet a practice instance in there, and start ticking.
 
@@ -443,7 +505,7 @@ function doTicks(praxishState, n) {
   }
 }
 
-const testPraxishState = createPraxishState();
+const testPraxishState = Praxish.createPraxishState();
 testPraxishState.allChars = [
   {
     name: "max",
@@ -491,22 +553,22 @@ testPraxishState.allChars = [
 ];
 // First test with just the `greet` practice
 console.log("PRACTICE TEST: greet");
-definePractice(testPraxishState, greetPractice);
-performOutcome(testPraxishState, "insert practice.greet.max.isaac");
-performOutcome(testPraxishState, "insert practice.greet.nic.max");
+Praxish.definePractice(testPraxishState, greetPractice);
+Praxish.performOutcome(testPraxishState, "insert practice.greet.max.isaac");
+Praxish.performOutcome(testPraxishState, "insert practice.greet.nic.max");
 doTicks(testPraxishState, 4);
 // Then introduce and test with the `tendBar` practice
 console.log("PRACTICE TEST: tendBar");
-definePractice(testPraxishState, tendBarPractice);
-performOutcome(testPraxishState, "insert practice.tendBar.isaac");
+Praxish.definePractice(testPraxishState, tendBarPractice);
+Praxish.performOutcome(testPraxishState, "insert practice.tendBar.isaac");
 doTicks(testPraxishState, 16);
 // Then test `ticTacToe` concurrently with the bar practice
 console.log("PRACTICE TEST: ticTacToe");
-definePractice(testPraxishState, ticTacToePractice);
-performOutcome(testPraxishState, "insert practice.ticTacToe.max.nic");
+Praxish.definePractice(testPraxishState, ticTacToePractice);
+Praxish.performOutcome(testPraxishState, "insert practice.ticTacToe.max.nic");
 doTicks(testPraxishState, 32);
 // Then test `jukebox` concurrently with the others
 console.log("PRACTICE TEST: jukebox");
-definePractice(testPraxishState, jukeboxPractice);
-performOutcome(testPraxishState, "insert practice.jukebox.jukebox");
+Praxish.definePractice(testPraxishState, jukeboxPractice);
+Praxish.performOutcome(testPraxishState, "insert practice.jukebox.jukebox");
 doTicks(testPraxishState, 24);

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Play What I Mean</title>
+  <style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  button {
+    background: #aaa;
+    border: none;
+    border-radius: 0.25rem;
+    color: white;
+    cursor: pointer;
+    font-size: inherit;
+    margin-bottom: 0.25rem;
+    margin-right: 0.25rem;
+    padding: 0.25rem;
+  }
+  body { font-family: Georgia, serif; line-height: 1.5; margin: 1rem auto; width: 720px; }
+  h1 { margin-bottom: 1rem; }
+  #controls { border: 1px solid #555; font-family: sans-serif; margin-bottom: 1rem; padding: 1rem; }
+  #searchbox { margin-bottom: 0.5rem; }
+  #searchbox button { background: #555; }
+  #searchbox button, #searchbox input { font-size: 1.5rem; }
+  #query { width: 80%; }
+  #priorityactions { margin-bottom: 0.5rem; }
+  #priorityactions button { background: black; font-size: 1.25rem; }
+  #otheractions button { font-size: 0.75rem; }
+  #waitmsg { color: #555; font-style: italic; }
+  #transcript { padding: 0 1rem; }
+  .action { margin-bottom: 0.5rem; }
+  .action .actorname { font-weight:bold; }
+  .statetext { color: #999; font-size: 0.8rem; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div id="searchbox">
+      <input id="query" type="text" placeholder="Type what you want to do...">
+      <button id="submit">Submit</button>
+    </div>
+    <div id="priorityactions"></div>
+    <div id="otheractions"><span id="waitmsg">waiting for player's turn...</span></div>
+  </div>
+  <div id="transcript"></div>
+  <script src="../../util.js"></script>
+  <script src="embed.js" type="module"></script>
+  <script src="../../db.js"></script>
+  <script src="../../praxish.js"></script>
+  <script src="../../planner.js"></script>
+  <script src="domain.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

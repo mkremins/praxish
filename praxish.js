@@ -1,12 +1,10 @@
-// Return a random item from a list.
-function randNth(items) {
-  return items[Math.floor(Math.random() * items.length)];
-}
+// Declare the Praxish module to which API functions will be attached.
+const Praxish = {};
 
 // Given a text `template` to render and a map of `bindings` to swap in,
 // return a copy of the `template` with all `[SquareBracketed]` variables
 // replaced by the corresponding value from `bindings`.
-function renderText(template, bindings) {
+Praxish.renderText = function(template, bindings) {
   let outputText = template;
   for (const [key, value] of Object.entries(bindings)) {
     outputText = outputText.replaceAll(`[${key}]`, value);
@@ -19,20 +17,20 @@ function renderText(template, bindings) {
 // Basically you can think of this object as "the interpreter".
 // FIXME For now you need to initialize `allChars` manually
 // on the returned object; see `tests.js` for an example.
-function createPraxishState() {
+Praxish.createPraxishState = function() {
   return {db: {}, practiceDefs: {}, allChars: [], actorIdx: -1};
 }
 
 // Given a `praxishState` and a `practiceDef` defining a practice,
 // update the `praxishState` to include this newly defined practice
 // and return the updated `praxishState`.
-function definePractice(praxishState, practiceDef) {
+Praxish.definePractice = function(praxishState, practiceDef) {
   praxishState.practiceDefs[practiceDef.id] = practiceDef;
   // Insert this practice's static data into the DB under the practiceData.PRACTICE_ID prefix.
   const practiceDataPrefix = `practiceData.${practiceDef.id}.`;
   const practiceData = (practiceDef.data || []).map(s => practiceDataPrefix + s);
   for (const sentence of practiceData) {
-    insert(praxishState.db, sentence);
+    DB.insert(praxishState.db, sentence);
   }
   return praxishState;
 }
@@ -42,7 +40,7 @@ function definePractice(praxishState, practiceDef) {
 // internally consistent bindings maps that satisfy the `conditions`.
 // Use `query` instead of the simpler `unifyAll` when you need negation,
 // variable equality checks, and so on in your conditions.
-function query(db, conditions, bindings) {
+Praxish.query = function(db, conditions, bindings) {
   let matches = [bindings];
   for (const condition of conditions) {
     const nextMatches = [];
@@ -50,7 +48,7 @@ function query(db, conditions, bindings) {
     if (parts.length === 1) {
       // Simple condition: just a logic sentence to try unifying with.
       for (const match of matches) {
-        for (const newMatch of unify(condition, db, match)) {
+        for (const newMatch of DB.unify(condition, db, match)) {
           nextMatches.push(newMatch);
         }
       }
@@ -61,7 +59,7 @@ function query(db, conditions, bindings) {
       if (op === "not") {
         // Check that the argument sentence *doesn't* unify, and kill the match if it does.
         for (const match of matches) {
-          const badMatches = unify(parts[1], db, match);
+          const badMatches = DB.unify(parts[1], db, match);
           if (badMatches.length > 0) continue; // Implicitly kill match via no-op
           nextMatches.push(match);
         }
@@ -70,8 +68,8 @@ function query(db, conditions, bindings) {
         // Unify the two arguments, which can be either bound vars, unbound vars, or constants.
         const [_, lhs, rhs] = parts;
         for (const match of matches) {
-          const groundedLhs = isVariable(lhs) ? match[lhs] : lhs;
-          const groundedRhs = isVariable(rhs) ? match[rhs] : rhs;
+          const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
+          const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
           if (groundedLhs && groundedRhs) {
             // Both sides bound or constant. Kill the match if they're not equal.
             if (groundedLhs !== groundedRhs) continue; // Implicitly kill match via no-op
@@ -96,8 +94,8 @@ function query(db, conditions, bindings) {
         // Basically a simplified version of the `eq` logic with the equality check inverted.
         const [_, lhs, rhs] = parts;
         for (const match of matches) {
-          const groundedLhs = isVariable(lhs) ? match[lhs] : lhs;
-          const groundedRhs = isVariable(rhs) ? match[rhs] : rhs;
+          const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
+          const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
           if (groundedLhs && groundedRhs) {
             // Both sides bound or constant. Kill the match if they're equal.
             if (groundedLhs === groundedRhs) continue; // Implicitly kill match via no-op
@@ -121,7 +119,7 @@ function query(db, conditions, bindings) {
 
 // Given a `praxishState` and an `actor`, return a list of all possible actions
 // that the `actor` can perform.
-function getAllPossibleActions(praxishState, actor) {
+Praxish.getAllPossibleActions = function(praxishState, actor) {
   const initBindings = {Actor: actor};
   const allPossibleActions = [];
   for (const practiceID of Object.keys(praxishState.db.practice)) {
@@ -129,13 +127,13 @@ function getAllPossibleActions(praxishState, actor) {
     const practiceDef = praxishState.practiceDefs[practiceID];
     const prefix = `practice.${practiceID}.`;
     const instancesQuery = prefix + practiceDef.roles.join(".");
-    const instances = unify(instancesQuery, praxishState.db, initBindings);
+    const instances = DB.unify(instancesQuery, praxishState.db, initBindings);
     for (const instance of instances) {
       // Get all possible actions for this actor from this instance.
-      const instanceID = ground(instancesQuery, instance);
+      const instanceID = DB.ground(instancesQuery, instance);
       for (const actionDef of practiceDef.actions) {
         // Unify this action's conditions with the DB and previous bindings.
-        const possibleActions = query(praxishState.db, actionDef.conditions, instance);
+        const possibleActions = Praxish.query(praxishState.db, actionDef.conditions, instance);
         for (const action of possibleActions) {
           // Link this possible action to its originating practice definition,
           // practice instance, and action definition.
@@ -143,7 +141,7 @@ function getAllPossibleActions(praxishState, actor) {
           action.instanceID = instanceID;
           action.actionID = actionDef.name;
           // Swap variable values into the action name template.
-          action.name = renderText(actionDef.name, action);
+          action.name = Praxish.renderText(actionDef.name, action);
           // Add this possible action to the list of all possible actions.
           allPossibleActions.push(action);
         }
@@ -156,19 +154,19 @@ function getAllPossibleActions(praxishState, actor) {
 // Given an `outcome` string and a map of `bindings` to use for grounding any
 // logic variables that appear in the `outcome`, return a fully grounded copy
 // of the `outcome` (suitable for interpretation by `performOutcome`).
-function groundOutcome(outcome, bindings) {
+Praxish.groundOutcome = function(outcome, bindings) {
   const parts = outcome.trim().split(/\s+/);
   const op = parts[0];
   if (op === "insert" || op === "delete") {
     const sentence = parts[1];
-    const groundedSentence = ground(sentence, bindings);
+    const groundedSentence = DB.ground(sentence, bindings);
     const groundedOutcome = op + " " + groundedSentence;
     return groundedOutcome;
   }
   else if (op === "call") {
     const functionName = parts[1];
     const params = parts.slice(2);
-    const groundedParams = params.map(param => ground(param, bindings));
+    const groundedParams = params.map(param => DB.ground(param, bindings));
     const groundedOutcome = op + " " + functionName + " " + groundedParams.join(" ");
     return groundedOutcome;
   }
@@ -180,13 +178,13 @@ function groundOutcome(outcome, bindings) {
 // Given a `praxishState` and a fully grounded `outcome` (i.e., one of the
 // possible consequences of an action), perform the `outcome` and return
 // the updated `praxishState`.
-function performOutcome(praxishState, outcome) {
+Praxish.performOutcome = function(praxishState, outcome) {
   const parts = outcome.trim().split(/\s+/);
   const op = parts[0];
   if (op === "insert") {
     // First just perform the insertion.
     const sentence = parts[1];
-    insert(praxishState.db, sentence);
+    DB.insert(praxishState.db, sentence);
     // Then figure out whether we're spawning a new practice instance,
     // and initialize the newly spawned instance if we are.
     const sentenceParts = sentence.split(/[\.\!]/);
@@ -211,15 +209,15 @@ function performOutcome(praxishState, outcome) {
           roleBindings[roleName] = roleValue;
         }
         for (const initOutcome of practiceDef.init) {
-          const groundedOutcome = groundOutcome(initOutcome, roleBindings);
-          performOutcome(praxishState, groundedOutcome);
+          const groundedOutcome = Praxish.groundOutcome(initOutcome, roleBindings);
+          Praxish.performOutcome(praxishState, groundedOutcome);
         }
       }
     }
   }
   else if (op === "delete") {
     const sentence = parts[1];
-    retract(praxishState.db, sentence);
+    DB.retract(praxishState.db, sentence);
   }
   else if (op === "call") {
     // Look up the function to execute.
@@ -245,14 +243,14 @@ function performOutcome(praxishState, outcome) {
     }
     // Determine which of the function's cases to execute (if any) and execute it.
     for (const caseDef of functionDef.cases) {
-      const results = query(praxishState.db, caseDef.conditions, paramBindings);
+      const results = Praxish.query(praxishState.db, caseDef.conditions, paramBindings);
       if (results.length > 0) {
         // Execute this case with the first available bindings and stop trying other cases.
         // FIXME Only one case should be executed per `call`, right?
         const result = results[0];
         for (const outcomeDef of caseDef.outcomes || []) {
-          const outcome = groundOutcome(outcomeDef, result);
-          performOutcome(praxishState, outcome); // FIXME Possible infinite recursion if `call`
+          const outcome = Praxish.groundOutcome(outcomeDef, result);
+          Praxish.performOutcome(praxishState, outcome); // FIXME Possible infinite recursion if `call`
         }
         break;
       }
@@ -267,72 +265,12 @@ function performOutcome(praxishState, outcome) {
 // Given a `praxishState` and an `action` (i.e., a map of bindings including
 // at least `Actor`, `practiceID`, `instanceID`, and `actionID`),
 // perform the `action` and return the updated `praxishState`.
-function performAction(praxishState, action) {
+Praxish.performAction = function(praxishState, action) {
   const practiceDef = praxishState.practiceDefs[action.practiceID];
   const actionDef = practiceDef.actions.find(adef => adef.name === action.actionID);
   for (const outcomeDef of actionDef.outcomes || []) {
-    const outcome = groundOutcome(outcomeDef, action);
-    performOutcome(praxishState, outcome);
+    const outcome = Praxish.groundOutcome(outcomeDef, action);
+    Praxish.performOutcome(praxishState, outcome);
   }
   return praxishState;
-}
-
-// Given a `praxishState`, determine whose turn it is to act,
-// select an action for that character to perform, and perform the action.
-function tick(praxishState) {
-  // Figure out whose turn it is to act. For now, turntaking will just be simple round-robin.
-  praxishState.actorIdx += 1;
-  if (praxishState.actorIdx > praxishState.allChars.length - 1) praxishState.actorIdx = 0;
-  const actor = praxishState.allChars[praxishState.actorIdx];
-  // Get all possible actions for the current actor.
-  const possibleActions = getAllPossibleActions(praxishState, actor.name);
-  // Figure out what action to perform.
-  // Practice-bound actors should perform random available actions from their practice;
-  // actors with goals should select actions that seem to advance their goals;
-  // actors without goals can do whatever.
-  let actionToPerform = null;
-  if (actor.boundToPractice) {
-    // Filter possible actions to just those from the bound practice.
-    // FIXME We should probably move this logic into `getAllPossibleActions`
-    // so that we don't waste time generating actions that will never be performed.
-    const practiceActions = possibleActions.filter(pa => pa.practiceID === actor.boundToPractice);
-    actionToPerform = randNth(practiceActions);
-  }
-  else if (actor.goals && possibleActions.length > 0) {
-    // Speculatively perform each possible action
-    // and score the outcome according to the actor's goals.
-    for (const possibleAction of possibleActions) {
-      const prevDB = clone(praxishState.db);
-      performAction(praxishState, possibleAction);
-      possibleAction.score = 0;
-      for (const goal of actor.goals) {
-        const results = query(praxishState.db, goal.conditions, {});
-        possibleAction.score += (goal.utility * results.length);
-      }
-      praxishState.db = prevDB;
-    }
-    // Select an action for the actor to perform,
-    // randomly choosing among top-scoring actions for this actor's goals.
-    possibleActions.sort((a, b) => b.score - a.score);
-    const topScore = possibleActions[0].score;
-    const firstNonTopscoringIdx = possibleActions.findIndex(pa => pa.score < topScore);
-    if (firstNonTopscoringIdx > -1) {
-      const bestScoringActions = possibleActions.slice(0, firstNonTopscoringIdx);
-      actionToPerform = randNth(bestScoringActions);
-    }
-    else {
-      actionToPerform = randNth(possibleActions);
-    }
-  }
-  else {
-    // Select a random action to perform.
-    actionToPerform = randNth(possibleActions);
-  }
-  // Perform the action, if any.
-  if (!actionToPerform) {
-    console.warn("No actions to perform", actor.name);
-    return;
-  }
-  console.log("Performing action ::", actionToPerform.name, actionToPerform);
-  performAction(praxishState, actionToPerform);
 }
