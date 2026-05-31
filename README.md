@@ -16,7 +16,7 @@ Then you can look at the various *demos* for examples of how to integrate Praxis
 We also provide a couple of (optional, experimental) core modules that implement different decision-making strategies for autonomous characters:
 
 - `planner.js` – Forward-looking agents that try to pick actions which will lead to the eventual fulfillment of their *goals*
-- `swaygent.js` – "Swayable agents" that use [Ensemble-like](https://github.com/ensemble-engine/ensemble) volition and influence rules to choose actions opportunistically *(coming soon!)*
+- `swaygent.js` – "Swayable agents" that use [Ensemble-like](https://github.com/ensemble-engine/ensemble) volition and influence rules to choose actions opportunistically
 
 ## Development history
 The [original Praxish paper](https://ojs.aaai.org/index.php/AIIDE/article/view/27537), published at AIIDE 2023, is probably the best starting point if you want to read more:

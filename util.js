@@ -35,3 +35,8 @@ function scale(num, [oldMin, oldMax], [newMin, newMax]) {
   const newRange = newMax - newMin;
   return (((num - oldMin) / oldRange) * newRange) + newMin;
 }
+
+// Sum `xs`, a list of numbers, and return the result.
+function sum(xs) {
+  return xs.reduce((a, b) => a + b, 0);
+}
