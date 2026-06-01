@@ -124,6 +124,18 @@ DB.dbToSentences = function(db) {
   return allSentences;
 }
 
+// Given two versions `db1` and `db2` of an exclusion logic DB,
+// return an object listing sentences in `db2` that were `added` and `removed`
+// in comparison to `db1`.
+DB.diff = function(db1, db2) {
+  const sents1 = new Set(DB.dbToSentences(db1));
+  const sents2 = new Set(DB.dbToSentences(db2));
+  return {
+    added: sents2.difference(sents1),
+    removed: sents1.difference(sents2)
+  };
+}
+
 // Given an exclusion logic `sentence` and a map of `bindings`,
 // return a grounded version of the `sentence` with variables
 // from the keys of `bindings` replaced by their bound values.
