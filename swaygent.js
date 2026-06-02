@@ -8,6 +8,24 @@ Swaygent.pickAction = function(scoredActions) {
   return scoredActions[0];
 }
 
+// Given a `scoreExpr` and a map of `bindings`, return a numeric evaluation
+// of the `scoreExpr` in the context of these `bindings`.
+Swaygent.evaluate = function(scoreExpr, bindings) {
+  if (typeof scoreExpr === "string") {
+    // Assume it's a numeric-valued lvar whose value is in `bindings`.
+    // FIXME Support `lvar * constant`, and/or more complex numeric exprs?
+   return parseInt(bindings[scoreExpr]);
+  }
+  else if (typeof scoreExpr === "number") {
+    // Assume it's a fixed numeric amount per result.
+    return scoreExpr;
+  }
+  else {
+    console.warn("Invalid `score` for sway", sway);
+    return 0;
+  }
+}
+
 // Given a `praxishState` and a `possibleAction`, compute a full list
 // of `influences` that should guide prioritization of this action.
 Swaygent.computeInfluences = function(praxishState, possibleAction) {
@@ -21,7 +39,10 @@ Swaygent.computeInfluences = function(praxishState, possibleAction) {
     // which means we're mixing together actual lvars and metadata.
     const instances = Praxish.query(praxishState.db, influenceRule.conditions, possibleAction);
     for (const instance of instances) {
-      allInfluences.push({rule: influenceRule, bindings: instance});
+      allInfluences.push({
+        type: "influence", rule: influenceRule, bindings: instance,
+        score: Swaygent.evaluate(influenceRule.score || 0, instance)
+      });
     }
   }
   return allInfluences;
@@ -35,45 +56,28 @@ Swaygent.computeVolitions = function(praxishState, actor) {
     const practiceDef = praxishState.practiceDefs[practiceID];
     for (const volitionRule of practiceDef.volitions || []) {
       // Query for applicable instances of this volition rule.
-      const instances = Praxish.query(praxishState.db, volitionRule.actor, {Actor: actor});
+      // FIXME Should the initial bindings for this query also include role bindings
+      // from the originating practice instance? Right now we don't start with a practice
+      // *instance* per se, we just start with the practice definition abstractly.
+      // So maybe in the course of running the query we get instance bindings "for free"?
+      const instances = Praxish.query(praxishState.db, volitionRule.conditions, {Actor: actor});
       for (const instance of instances) {
-        allVolitions.push({practiceID, rule: volitionRule, bindings: instance});
-        // FIXME Add `conditions`, i.e., the ground `after` query of the volition rule?
+        allVolitions.push({
+          type: "volition", practiceID, rule: volitionRule, bindings: instance,
+          score: Swaygent.evaluate(volitionRule.score || 0, instance)
+        });
       }
     }
   }
   return allVolitions;
 }
 
-// Given an exclusion logic `db` and a list of actor `volitions`,
-// return a numeric evaluation of the situation represented by the `db`
-// in terms of these `volitions`.
-Swaygent.evaluate = function(db, volitions) {
-  let score = 0;
-  for (const volition of volitions) {
-    const results = Praxish.query(db, volition.rule.wants, volition.bindings);
-    if (typeof volition.rule.score === "string") {
-      // Assume it's a numeric-valued lvar whose value is in `bindings`.
-      // FIXME Support `lvar * constant`, and/or more complex numeric exprs?
-      score += sum(results.map(res => parseInt(res[volition.rule.score])));
-    }
-    else if (typeof volition.rule.score === "number") {
-      // Assume it's a fixed numeric amount per result.
-      score += (volition.rule.score * results.length);
-    }
-    else {
-      console.warn("Invalid `score` for volition", volition);
-    }
-  }
-  return score;
-}
-
-// Given a list of action `influences`, return a string representing the
-// priority tier of the action subject to these influences.
-Swaygent.prioritize = function(influences) {
-  if (influences.length === 0) return "fine";
-  const tiers = ["forbidden", "required", "likelier", "unlikelier"];
-  const tierIndex = Math.min(influences.map(inf => tiers.indexOf(inf.rule.priority)));
+// Given a list of action `sways`, return a string representing the
+// priority tier of the action subject to these sways.
+Swaygent.prioritize = function(sways) {
+  if (sways.length === 0) return "normal";
+  const tiers = ["forbidden", "required", "normal"];
+  const tierIndex = Math.min(...sways.map(sway => tiers.indexOf(sway.rule.priority || "normal")));
   return tiers[tierIndex];
 }
 
@@ -92,26 +96,26 @@ Swaygent.scoreActions = function(praxishState, actor) {
   }
   // Bail out early if no possible actions.
   if (possibleActions.length === 0) return null;
-  // Calculate volitions for the acting character.
-  const volitions = Swaygent.computeVolitions(praxishState, actor.name);
   // Assign each possible action a `priority` (derived from action-level influence rules)
   // and a `score` (derived from volitional evaluation of the outcome of speculatively
   // performing this action).
   for (const possibleAction of possibleActions) {
-    // Influence part: compute active influences, then prioritize accordingly.
+    // Influence part: compute active influences.
     const influences = Swaygent.computeInfluences(praxishState, possibleAction);
-    possibleAction.priority = Swaygent.prioritize(influences);
-    // FIXME Bail out early here if priority is `forbidden`?
-    // Volition part: speculatively perform action, then evaluate outcome.
+    // Volition part: speculatively perform action, then compute active volitions.
     const prevDB = clone(praxishState.db);
     Praxish.performAction(praxishState, possibleAction);
-    possibleAction.stateText = renderStateToText(praxishState); // FIXME uses a function Swaygent shouldn't have
-    possibleAction.score = Swaygent.evaluate(praxishState.db, volitions);
+    const volitions = Swaygent.computeVolitions(praxishState, actor.name);
+    // Using full list of computed sways, determine how to score/prioritize action.
+    possibleAction.sways = influences.concat(volitions);
+    possibleAction.score = sum(possibleAction.sways.map(sway => sway.score));
+    possibleAction.priority = Swaygent.prioritize(possibleAction.sways);
+    // Restore previous DB.
     praxishState.db = prevDB;
   }
   // Sort actions by priority, then score, and return the sorted list.
   // FIXME Explicitly filter out `forbidden` actions here?
-  const tiers = ["required", "likelier", "fine", "unlikelier", "forbidden"];
+  const tiers = ["required", "normal", "forbidden"];
   possibleActions.sort((a, b) => {
     const prioritySort = tiers.indexOf(a.priority) - tiers.indexOf(b.priority);
     const utilitySort = b.score - a.score;
