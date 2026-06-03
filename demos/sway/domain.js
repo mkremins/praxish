@@ -41,27 +41,62 @@ const yapPractice = {
   id: "yap",
   name: "People can yap about various topics",
   roles: ["World"],
+  init: [
+    "insert practice.yap.World.lastTopic.nothing",
+    "insert practice.yap.World.turnsOnTopic.0"
+  ],
   actions: [
     {
-      name: "[Actor]: Yap about [Topic]",
-      conditions: ["char.Actor", "topic.Topic"],
+      name: "[Actor]: Keep talking about [Topic]",
+      conditions: [
+        "char.Actor",
+        "practice.yap.World.lastTopic.Topic",
+        "neq Topic nothing",
+        "practice.yap.World.turnsOnTopic.Turns",
+        "calc NextTurnCount add Turns 1",
+      ],
       outcomes: [
-        "insert practice.yap.World.lastTopic!Topic",
+        "insert practice.yap.World.turnsOnTopic!NextTurnCount",
       ],
       influences: [{
         name: "We're already talking about [Topic]",
         conditions: ["practice.yap.World.lastTopic.Topic"],
         score: 2,
-      },
-      {
+      }],
+    },
+    {
+      name: "[Actor]: Start talking about [Topic]",
+      conditions: [
+        "char.Actor", "practice.yap.World.lastTopic.OldTopic",
+        "topic.Topic", "neq Topic OldTopic"
+      ],
+      outcomes: [
+        "insert practice.yap.World.lastTopic!Topic",
+        "insert practice.yap.World.turnsOnTopic!1",
+      ],
+      influences: [{
         name: "[Topic] is related to [OldTopic]",
         conditions: [
           "practice.yap.World.lastTopic.OldTopic",
           "topic.OldTopic.connected.Topic"
         ],
-        score: 2,
+        score: 1.5,
+      },
+      {
+        name: "We've been talking about [OldTopic] for a while",
+        conditions: [
+          "practice.yap.World.turnsOnTopic.Turns",
+          "gt Turns 3",
+          "calc Weight sub Turns 3"
+        ],
+        score: "Weight",
+      },
+      {
+        name: "Right now we're not talking about anything",
+        conditions: ["practice.yap.World.lastTopic.nothing"],
+        score: 1,
       }],
-    }
+    },
   ],
   volitions: [{
     name: "[Actor] is interested in [Topic]",
