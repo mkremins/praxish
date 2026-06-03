@@ -96,7 +96,7 @@ function Turn(props) {
           e("ul", {className: "sways-list"},
             action.sways.map(sway => {
               return e("li", {className: "sway"},
-                `${sway.type}: ${sway.rule.name} (${sway.rule.score || 0}, ${sway.rule.priority || "normal"})`
+                `${sway.type}: ${sway.name} (${sway.score || 0}, ${sway.priority || "normal"})`
               )
             })
           )
