@@ -133,6 +133,7 @@ const greetPractice = {
       name: "[Actor]: Greet [Other]",
       conditions: [
         "char.Other",
+        "neq Actor Other",
         "not practice.greet.World.alreadyGreeted.Actor.Other"
       ],
       outcomes: [
@@ -142,26 +143,22 @@ const greetPractice = {
         name: "Greetings should be reciprocated",
         conditions: ["practice.greet.World.alreadyGreeted.Other.Actor"],
         priority: "required",
+      },
+      {
+        name: "[Actor] is friends with [Other]",
+        conditions: ["char.Actor.friends.Other"],
+        score: 5,
+      },
+      {
+        name: "[Actor] is gregarious and hasn't yet met [Other]",
+        conditions: [
+          "char.Actor.tag.gregarious",
+          "not char.Actor.friends.Other"
+        ],
+        score: 2,
       }],
     }
-  ],
-  volitions: [{
-    name: "People want to greet their friends",
-    conditions: [
-      "char.Actor.friends.Other",
-      "practice.greet.World.alreadyGreeted.Actor.Other"
-    ],
-    score: 5,
-  },
-  {
-    name: "Gregarious people want to greet strangers",
-    conditions: [
-      "char.Actor.tag.gregarious",
-      "not char.Actor.friends.Other",
-      "practice.greet.World.alreadyGreeted.Actor.Other"
-    ],
-    score: 2,
-  }]
+  ]
 };
 
 const yapPractice = {
@@ -176,12 +173,12 @@ const yapPractice = {
         "insert practice.yap.World.lastTopic!Topic",
       ],
       influences: [{
-        name: "Conversations should stay roughly on topic",
+        name: "We're already talking about [Topic]",
         conditions: ["practice.yap.World.lastTopic.Topic"],
         score: 2,
       },
       {
-        name: "A conversation's topic can drift to connected topics",
+        name: "[Topic] is related to [OldTopic]",
         conditions: [
           "practice.yap.World.lastTopic.OldTopic",
           "topic.OldTopic.connected.Topic"
@@ -191,7 +188,7 @@ const yapPractice = {
     }
   ],
   volitions: [{
-    name: "People want to talk about their interests",
+    name: "[Actor] is interested in [Topic]",
     conditions: [
       "char.Actor.interest.Topic",
       "practice.yap.World.lastTopic.Topic"
@@ -217,6 +214,7 @@ const topicPairs = [
   ["importanceOfMarriage", "faith"],
   ["royalFamily", "prince"],
   ["prince", "royalScandal"],
+  ["royalFamily", "royalScandal"],
   ["royalScandal", "politicalUnrest"],
   ["politicalUnrest", "merchantCollusion"],
   ["politicalUnrest", "controversialInventions"],
@@ -258,21 +256,21 @@ const interestSentences = [
   "char.framingham.interest.politicalUnrest",
   "char.framingham.interest.merchantCollusion",
   // weatherford
-  "char.lillislue.interest.controversialInventions",
-  "char.lillislue.interest.medicalScience",
-  "char.lillislue.interest.lillisluesWork",
-  "char.framingham.interest.continentalPlague",
-  "char.framingham.interest.continentalWar",
-  "char.framingham.interest.politicalUnrest",
-  "char.framingham.interest.merchantCollusion",
+  "char.weatherford.interest.controversialInventions",
+  "char.weatherford.interest.medicalScience",
+  "char.weatherford.interest.lillisluesWork",
+  "char.weatherford.interest.continentalPlague",
+  "char.weatherford.interest.continentalWar",
+  "char.weatherford.interest.politicalUnrest",
+  "char.weatherford.interest.merchantCollusion",
   // easelwood
-  "char.framingham.interest.royalFamily",
-  "char.framingham.interest.king",
-  "char.framingham.interest.ailingKing",
-  "char.framingham.interest.queen",
-  "char.framingham.interest.princess",
-  "char.framingham.interest.importanceOfMarriage",
-  "char.framingham.interest.prince",
+  "char.easelwood.interest.royalFamily",
+  "char.easelwood.interest.king",
+  "char.easelwood.interest.ailingKing",
+  "char.easelwood.interest.queen",
+  "char.easelwood.interest.princess",
+  "char.easelwood.interest.importanceOfMarriage",
+  "char.easelwood.interest.prince",
 ];
 for (const sentence of interestSentences) {
   Praxish.performOutcome(appPraxishState, `insert ${sentence}`);
