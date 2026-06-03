@@ -12,6 +12,7 @@ Then you can look at the various *demos* for examples of how to integrate Praxis
 
 - `demos/test` – Basic functionality tests, which demonstrate the gradual build-up of a social world
 - `demos/pwim` – A slightly more complicated example game that allows the player to pick actions for their character to perform, while other characters act autonomously
+- `demos/sway` – An interactive example project that demonstrates Swaygent decision-making logic
 
 We also provide a couple of (optional, experimental) core modules that implement different decision-making strategies for autonomous characters:
 
