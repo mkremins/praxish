@@ -85,7 +85,7 @@ function Turn(props) {
           e("ul", {className: "sways-list"},
             action.sways.map(sway => {
               return e("li", {className: "sway"},
-                `${sway.type}: ${sway.name} (${sway.score || 0}, ${sway.priority || "normal"})`
+                `${sway.type}: ${sway.name} (${sway.score || 0}, ${sway.rule.priority || "normal"})`
               )
             })
           )
@@ -135,9 +135,11 @@ function actuallyDoAction(appState, praxishState, turnID, actionIdx) {
   // find the current turn and mark the action performed
   const turn = appState.turns.find(turn => turn.turnID === turnID);
   turn.actionIdx = actionIdx;
+  const action = turn.actions[actionIdx];
+  console.log("Performing action :: ", action);
   // cache old DB for a sec, perform the action, save the diff
   const prevDB = clone(praxishState.db);
-  Praxish.performAction(praxishState, turn.actions[actionIdx]);
+  Praxish.performAction(praxishState, action);
   const diff = DB.diff(prevDB, praxishState.db);
   turn.dbDiff = {added: Array.from(diff.added), removed: Array.from(diff.removed)};
   // render UI and resume simulation
