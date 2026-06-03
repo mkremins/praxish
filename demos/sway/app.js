@@ -103,6 +103,10 @@ function Turn(props) {
         )
       })
     ),
+    props.dbDiff ? e("div", {className: "db-diff"},
+      props.dbDiff.removed.map(sent => e("div", {className: "removed"}, `- ${sent}`)),
+      props.dbDiff.added.map(sent => e("div", {className: "added"}, `+ ${sent}`)),
+    ) : null,
     (completionState === "complete") ? e("button", {
       onClick: () => {
         appState.turns[props.turnID].isCollapsed = !props.isCollapsed;
@@ -331,9 +335,15 @@ function setUpTurn(appState, praxishState) {
 }
 
 function actuallyDoAction(appState, praxishState, turnID, actionIdx) {
+  // find the current turn and mark the action performed
   const turn = appState.turns.find(turn => turn.turnID === turnID);
   turn.actionIdx = actionIdx;
+  // cache old DB for a sec, perform the action, save the diff
+  const prevDB = clone(praxishState.db);
   Praxish.performAction(praxishState, turn.actions[actionIdx]);
+  const diff = DB.diff(prevDB, praxishState.db);
+  turn.dbDiff = {added: Array.from(diff.added), removed: Array.from(diff.removed)};
+  // render UI and resume simulation
   renderUI();
   requestAnimationFrame(tick);
 }
