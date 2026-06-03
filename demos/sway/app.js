@@ -72,18 +72,18 @@ function CharactersPanel(props) {
 }
 
 function Turn(props) {
-  const actorType = props.actor.isPlayer ? "player" : "NPC";
+  const actorType = props.isPlayer ? "player" : "NPC";
   const completionState = props.actionIdx === undefined ? "incomplete" : "complete";
   return e("div", {className: `turn ${actorType} ${completionState}`},
     e("h3", {}, `Turn ${props.turnID} by ${props.actor.name} (${actorType})`),
     e("div", {className: "actions-list"},
       props.actions.map((action, actionIdx) => {
         const wasChosen = actionIdx === props.actionIdx;
+        if (completionState === "complete" && props.isCollapsed && !wasChosen) return null;
         return e("div", {
             className: `action${wasChosen?" chosen":""}`,
             onClick: () => {
-              // when the player clicks an action on an untaken player turn, perform that action
-              if (!props.actor.isPlayer) return;
+              // when the player clicks an action on an untaken turn, perform that action
               if (props.actionIdx !== undefined) return;
               actuallyDoAction(appState, appPraxishState, props.turnID, actionIdx);
             }
@@ -102,7 +102,13 @@ function Turn(props) {
           )
         )
       })
-    )
+    ),
+    (completionState === "complete") ? e("button", {
+      onClick: () => {
+        appState.turns[props.turnID].isCollapsed = !props.isCollapsed;
+        renderUI();
+      }
+    }, props.isCollapsed ? "Show alternatives" : "Hide alternatives") : null
   );
 }
 
@@ -193,7 +199,16 @@ const yapPractice = {
       "char.Actor.interest.Topic",
       "practice.yap.World.lastTopic.Topic"
     ],
-    score: 3,
+    score: 1,
+  },
+  {
+    name: "[Actor]'s friend [Friend] is interested in [Topic]",
+    conditions: [
+      "char.Actor.friends.Friend",
+      "char.Friend.interest.Topic",
+      "practice.yap.World.lastTopic.Topic"
+    ],
+    score: 0.5,
   }]
 };
 
@@ -312,7 +327,7 @@ function setUpTurn(appState, praxishState) {
   appState.actorIdx = advanceCursor(appState.actorIdx, appState.chars);
   const actor = appState.chars[appState.actorIdx];
   const possibleActions = Swaygent.scoreActions(praxishState, actor);
-  return {turnID, actor, actions: possibleActions};
+  return {turnID, actor, isPlayer: actor.isPlayer, actions: possibleActions};
 }
 
 function actuallyDoAction(appState, praxishState, turnID, actionIdx) {
@@ -330,6 +345,7 @@ function tick() {
     renderUI();
   }
   else {
+    turn.isCollapsed = true;
     actuallyDoAction(appState, appPraxishState, turn.turnID, 0);
   }
 }
