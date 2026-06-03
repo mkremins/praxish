@@ -108,6 +108,62 @@ Praxish.query = function(db, conditions, bindings) {
           }
         }
       }
+      else if (["lt", "lte", "gt", "gte"].includes(op)) {
+        // Kill the match if the numeric constraint is unmet. Similar to the `neq` logic,
+        // but coerces arguments to numbers and applies a numeric comparator.
+        const [_, lhs, rhs] = parts;
+        for (const match of matches) {
+          const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
+          const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
+          if (groundedLhs && groundedRhs) {
+            // Both sides bound or constant. Kill the match if the comparator fails.
+            const compare = {
+              lt:  (a, b) => a <  b,
+              lte: (a, b) => a <= b,
+              gt:  (a, b) => a >  b,
+              gte: (a, b) => a >= b
+            }[op];
+            const pass = compare(Number(groundedLhs), Number(groundedRhs));
+            if (!pass) continue; // Implicitly kill match via no-op
+            nextMatches.push(match);
+          }
+          else {
+            // At least one of the arguments is unbound.
+            // Probably indicates an error in the practice definition.
+            console.warn("Part of numeric comparison unbound", condition);
+          }
+        }
+      }
+      else if (op === "calc") {
+        // Bind a new lvar (left) to the result of applying a binary numeric operator
+        // (middle) to two constant or bound lvar arguments (right).
+        const [_, newLvar, numOp, lhs, rhs] = parts;
+        for (const match of matches) {
+          const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
+          const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
+          const calculate = {
+            add: (a, b) => a + b,
+            sub: (a, b) => a - b,
+            mul: (a, b) => a * b,
+            // FIXME No `div` for now, I don't want to think about floats in the DB
+          }[numOp];
+          if (groundedLhs && groundedRhs && calculate) {
+            // Both arguments bound or constant, numeric op known. Calculate and set the new lvar.
+            const result = calculate(Number(groundedLhs), Number(groundedRhs));
+            const newMatch = clone(match);
+            newMatch[newLvar] = result;
+            nextMatches.push(newMatch);
+          }
+          else if (!calculate) {
+            console.warn("Invalid numeric operator", numOp, condition);
+          }
+          else {
+            // At least one of the arguments is unbound.
+            // Probably indicates an error in the practice definition.
+            console.warn("Part of calc op unbound", condition);
+          }
+        }
+      }
       else {
         console.warn("Bad condition op", op, condition);
       }

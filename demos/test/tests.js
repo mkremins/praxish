@@ -11,6 +11,27 @@ console.log(DB.unifyAll(["X.Y.woof", "fizz.buzz.X"], testDB));
 DB.retract(testDB, "foo.bar");
 console.log(DB.dbToSentences(testDB));
 
+/// Test math.
+
+DB.insert(testDB, "counter.0");
+let mathRes = Praxish.query(testDB, ["counter.Val", "gt Val 4"], {});
+console.log("mathRes", mathRes); // should be empty
+mathRes = Praxish.query(testDB, ["counter.Val", "calc NewVal add Val 5"], {});
+console.log("mathRes", mathRes); // should have NewVal: 5
+DB.insert(testDB, `counter!${mathRes[0].NewVal}`);
+mathRes = Praxish.query(testDB, ["counter.Val", "gt Val 4"], {});
+console.log("mathRes", mathRes); // should have Val: 5
+mathRes = Praxish.query(testDB, [
+  "counter.Val",
+  "calc BigVal mul Val Val",
+  "lt Val BigVal",
+  "calc TinyVal sub Val BigVal",
+], {});
+console.log("mathRes", mathRes); // should have TinyVal: -20
+DB.insert(testDB, `counter!${mathRes[0].TinyVal}`);
+mathRes = Praxish.query(testDB, ["counter.Val", "lte Val -20"], {});
+console.log("mathRes", mathRes); // should have Val: -20
+
 /// Define some practices for testing Praxish proper.
 
 const greetPractice = {
