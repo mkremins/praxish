@@ -26,9 +26,9 @@ const greetPractice = {
         score: 5,
       },
       {
-        name: "[Actor] is gregarious and hasn't yet met [Other]",
+        name: "[Actor] is outgoing and hasn't yet met [Other]",
         conditions: [
-          "char.Actor.tag.gregarious",
+          "char.Actor.tag.outgoing",
           "not char.Actor.friends.Other"
         ],
         score: 2,
@@ -104,6 +104,12 @@ const appDomainChars = [
 ];
 for (const char of appDomainChars) {
   Praxish.performOutcome(appPraxishState, `insert char.${char.name}`);
+}
+const traitSentences = [
+  "char.framingham.tag.outgoing",
+];
+for (const sentence of traitSentences) {
+  Praxish.performOutcome(appPraxishState, `insert ${sentence}`);
 }
 
 // set up conversation topics
