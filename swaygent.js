@@ -41,7 +41,8 @@ Swaygent.computeInfluences = function(praxishState, possibleAction) {
     for (const instance of instances) {
       allInfluences.push({
         type: "influence", rule: influenceRule, bindings: instance,
-        score: Swaygent.evaluate(influenceRule.score || 0, instance)
+        score: Swaygent.evaluate(influenceRule.score || 0, instance),
+        name: Praxish.renderText(influenceRule.name, instance),
       });
     }
   }
@@ -64,7 +65,8 @@ Swaygent.computeVolitions = function(praxishState, actor) {
       for (const instance of instances) {
         allVolitions.push({
           type: "volition", practiceID, rule: volitionRule, bindings: instance,
-          score: Swaygent.evaluate(volitionRule.score || 0, instance)
+          score: Swaygent.evaluate(volitionRule.score || 0, instance),
+          name: Praxish.renderText(volitionRule.name, instance),
         });
       }
     }
