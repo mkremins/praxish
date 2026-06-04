@@ -147,8 +147,8 @@ DB.ground = function(sentence, bindings) {
     const hasPunct = lastChar === "!" || lastChar === ".";
     const nonPunctPart = hasPunct ? part.slice(0, -1) : part;
     const boundVal = bindings[nonPunctPart];
-    if (!boundVal) console.warn("Missing binding", nonPunctPart, bindings);
-    return (boundVal || nonPunctPart) + (hasPunct ? lastChar : "");
+    if (boundVal === undefined) console.warn("Missing binding", nonPunctPart, bindings);
+    return (boundVal ?? nonPunctPart) + (hasPunct ? lastChar : "");
   });
   return groundedParts.join("");
 }
