@@ -32,6 +32,34 @@ DB.insert(testDB, `counter!${mathRes[0].TinyVal}`);
 mathRes = Praxish.query(testDB, ["counter.Val", "lte Val -20"], {});
 console.log("mathRes", mathRes); // should have Val: -20
 
+/// Test `subquery` and `count`.
+
+const subqueryTestFacts = [
+  "char.tim",
+  "char.kevin",
+  "char.james",
+  "char.jer",
+  "isDancing.tim",
+  "isDancing.kevin",
+  "isDancing.jer",
+];
+const subqueryTestDB = {};
+for (const fact of subqueryTestFacts) {
+  DB.insert(subqueryTestDB, fact);
+}
+const subqueryTest = [
+  "char.Actor",
+  {
+    set: "Dancers"
+    find: ["Dancer"],
+    where: ["char.Dancer", "isDancing.Dancer", "neq Dancer Actor"],
+  },
+  "calc NumDancers count Dancers",
+  "eq NumDancers 2",
+];
+const subqueryRes = Praxish.query(subqueryTestDB, subqueryTest, {Actor: "tim"});
+console.log("subqueryRes", subqueryRes);
+
 /// Define some practices for testing Praxish proper.
 
 const greetPractice = {
