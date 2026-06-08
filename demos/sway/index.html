@@ -30,11 +30,15 @@
 		padding: 0.5ch;
 	}
 	.turn.incomplete .action { cursor: pointer; }
+	.turn.incomplete .action.impossible { cursor: not-allowed; }
 	.action.chosen { border: 2px solid forestgreen; background: honeydew; }
+	.action.impossible { opacity: 0.5; }
+	.action.impossible h4 { text-decoration: line-through; }
 	.action h4 { font-size: 1rem; }
 	.action .tag { color: #555; font-style: italic; font-size: 0.8rem; margin-right: 2ch; }
 	.action .priority:before { content: "priority: "; }
 	.action .score:before { content: "score: "; }
+	.action .why-not:before { content: "requires: "; }
 	.sways-list { margin-left: 2ch; font-size: 0.6rem; }
 	.db-diff {
 		font-family: monospace;

@@ -90,7 +90,15 @@ function Turn(props) {
             })
           )
         )
-      })
+      }),
+      (!props.isCollapsed ? props.impossibleActions.map((action, actionIdx) => {
+        return e("div", {className: "action impossible"},
+          e("h4", {}, action.actionID),
+          e("div", {className: "tags-list"},
+            e("span", {className: "tag why-not"}, action.killedBy),
+          ),
+        );
+      }) : null),
     ),
     props.dbDiff ? e("div", {className: "db-diff"},
       props.dbDiff.removed.map(sent => e("div", {className: "removed"}, `- ${sent}`)),
@@ -128,7 +136,12 @@ function setUpTurn(appState, praxishState) {
   appState.actorIdx = advanceCursor(appState.actorIdx, appState.chars);
   const actor = appState.chars[appState.actorIdx];
   const possibleActions = Swaygent.scoreActions(praxishState, actor);
-  return {turnID, actor, isPlayer: actor.isPlayer, actions: possibleActions};
+  const impossibleActions = possibleActions.impossibleActions;
+  console.log("impossibleActions", impossibleActions);
+  return {
+    turnID, actor, isPlayer: actor.isPlayer,
+    actions: possibleActions, impossibleActions,
+  };
 }
 
 function actuallyDoAction(appState, praxishState, turnID, actionIdx) {
