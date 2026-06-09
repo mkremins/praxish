@@ -40,3 +40,27 @@ function scale(num, [oldMin, oldMax], [newMin, newMax]) {
 function sum(xs) {
   return xs.reduce((a, b) => a + b, 0);
 }
+
+// Return the prefix of `items` for which `pred` is consistently truthy.
+function takeWhile(pred, items) {
+  const prefix = [];
+  for (const item of items) {
+    if (!pred(item)) break;
+    prefix.push(item);
+  }
+  return prefix;
+}
+
+// Return a weighted random choice from a list of `items`,
+// with weights given by `weightFn`.
+function weightedRandomChoice(items, weightFn) {
+  const r = Math.random();
+  const itemsWithWeights = items.map(item => ({item, weight: weightFn(item)}));
+  const totalWeight = sum(itemsWithWeights.map(x => x.weight));
+  let threshold = 0;
+  for (const {item, weight} of itemsWithWeights) {
+    threshold += weight / totalWeight;
+    if (r <= threshold) return item;
+  }
+  return null; // Should never get here!
+}
