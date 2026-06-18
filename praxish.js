@@ -40,7 +40,7 @@ Praxish.definePractice = function(praxishState, practiceDef) {
 // internally consistent bindings maps that satisfy the `conditions`.
 // Use `query` instead of the simpler `unifyAll` when you need negation,
 // variable equality checks, and so on in your conditions.
-Praxish.query = function(db, conditions, bindings) {
+Praxish.query = function(db, conditions, bindings, opts) {
   let matches = [bindings];
   for (const condition of conditions) {
     const nextMatches = [];
@@ -141,7 +141,7 @@ Praxish.query = function(db, conditions, bindings) {
           const [_, newLvar, numOp, lhs, rhs] = parts;
           for (const match of matches) {
             const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
-            const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
+            const groundedRhs = rhs && DB.isVariable(rhs) ? match[rhs] : rhs;
             const calculate = {
               add: (a, b) => a + b,
               sub: (a, b) => a - b,
@@ -153,6 +153,16 @@ Praxish.query = function(db, conditions, bindings) {
               const result = calculate(Number(groundedLhs), Number(groundedRhs));
               const newMatch = clone(match);
               newMatch[newLvar] = result;
+              nextMatches.push(newMatch);
+            }
+            else if (groundedLhs && !groundedRhs && numOp === "count") {
+              // Using `count` on a set
+              if (!Array.isArray(groundedLhs)) {
+                console.warn("Can't count non-set value", groundedLhs, condition);
+                continue; // Bail out early from processing this clause
+              }
+              const newMatch = clone(match);
+              newMatch[newLvar] = groundedLhs.length;
               nextMatches.push(newMatch);
             }
             else if (!calculate) {
@@ -169,12 +179,26 @@ Praxish.query = function(db, conditions, bindings) {
           console.warn("Bad condition op", op, condition);
         }
       }
-      else if (condition.set) {
-        // TODO Execute a subquery to bind a new set
+    }
+    else if (condition.set) {
+      if (opts?.isSubquery) {
+        console.warn("Can't subquery inside subquery", condition);
+        continue; // Bail out early from processing this clause
       }
-      else {
-        console.warn("Condition must be string or object", condition);
+      // Execute a subquery to bind a new set
+      const newLvar = condition.set;
+      const findLvars = condition.find;
+      const subquery = condition.where;
+      for (const match of matches) {
+        const subqueryResults = Praxish.query(db, subquery, match, {isSubquery: true});
+        const projectedSet = subqueryResults.map(res => findLvars.map(lvar => res[lvar]));
+        const newMatch = clone(match);
+        newMatch[newLvar] = projectedSet;
+        nextMatches.push(newMatch);
       }
+    }
+    else {
+      console.warn("Condition must be string or object", condition);
     }
     matches = nextMatches;
   }

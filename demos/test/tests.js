@@ -50,7 +50,7 @@ for (const fact of subqueryTestFacts) {
 const subqueryTest = [
   "char.Actor",
   {
-    set: "Dancers"
+    set: "Dancers",
     find: ["Dancer"],
     where: ["char.Dancer", "isDancing.Dancer", "neq Dancer Actor"],
   },
