@@ -15,9 +15,9 @@ We also provide a couple of (optional, experimental) core modules that implement
 
 Then you can look at the various *demos* for examples of how to integrate Praxish functionality into a game loop:
 
-- `demos/test` – Basic functionality tests, which demonstrate the gradual build-up of a social world
-- `demos/pwim` – A slightly more complicated example game that allows the player to pick actions for their character to perform, while other characters act autonomously
-- `demos/sway` – An interactive example project that demonstrates Swaygent decision-making logic
+- [`demos/test`](https://mkremins.github.io/praxish/demos/test) – Basic functionality tests, which demonstrate the gradual build-up of a social world
+- [`demos/pwim`](https://mkremins.github.io/praxish/demos/pwim) – A slightly more complicated example game that allows the player to pick actions for their character to perform, while other characters act autonomously
+- [`demos/sway`](https://mkremins.github.io/praxish/demos/sway) – An interactive example project that demonstrates Swaygent decision-making logic
 
 ## Development history
 The [original Praxish paper](https://ojs.aaai.org/index.php/AIIDE/article/view/27537), published at AIIDE 2023, is probably the best starting point if you want to read more:
