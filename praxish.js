@@ -73,7 +73,9 @@ Praxish.query = function(db, conditions, bindings, opts) {
             const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
             if (groundedLhs && groundedRhs) {
               // Both sides bound or constant. Kill the match if they're not equal.
-              if (groundedLhs !== groundedRhs) continue; // Implicitly kill match via no-op
+              const strLhs = String(groundedLhs);
+              const strRhs = String(groundedRhs);
+              if (strLhs !== strRhs) continue; // Implicitly kill match via no-op
               nextMatches.push(match);
             }
             else if (groundedLhs || groundedRhs) {
@@ -99,7 +101,9 @@ Praxish.query = function(db, conditions, bindings, opts) {
             const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
             if (groundedLhs && groundedRhs) {
               // Both sides bound or constant. Kill the match if they're equal.
-              if (groundedLhs === groundedRhs) continue; // Implicitly kill match via no-op
+              const strLhs = String(groundedLhs);
+              const strRhs = String(groundedRhs);
+              if (strLhs === strRhs) continue; // Implicitly kill match via no-op
               nextMatches.push(match);
             }
             else {
