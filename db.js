@@ -90,7 +90,7 @@ DB.insert = function(db, sentence) {
       subtree = subtree[nonPunctPart];
     }
     else {
-      subtree[part] = {};
+      subtree[part] = subtree[part] || {};
     }
   }
   return db;

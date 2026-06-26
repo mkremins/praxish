@@ -10,6 +10,8 @@ console.log(DB.dbToSentences(testDB));
 console.log(DB.unifyAll(["X.Y.woof", "fizz.buzz.X"], testDB));
 DB.retract(testDB, "foo.bar");
 console.log(DB.dbToSentences(testDB));
+DB.insert(testDB, "foo");
+console.log(DB.dbToSentences(testDB)); // should be unchanged
 
 /// Test math.
 
