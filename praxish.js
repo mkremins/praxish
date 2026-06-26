@@ -261,11 +261,9 @@ Praxish.performOutcome = function(praxishState, outcome) {
   const parts = outcome.trim().split(/\s+/);
   const op = parts[0];
   if (op === "insert") {
-    // First just perform the insertion.
     const sentence = parts[1];
-    DB.insert(praxishState.db, sentence);
-    // Then figure out whether we're spawning a new practice instance,
-    // and initialize the newly spawned instance if we are.
+    // First assess whether this insertion implies a practice instance
+    // that doesn't yet exist in the DB.
     const sentenceParts = sentence.split(/[\.\!]/);
     const practiceID = sentenceParts[0] === "practice" && sentenceParts[1];
     const practiceDef = praxishState.practiceDefs[practiceID];
@@ -273,7 +271,15 @@ Praxish.performOutcome = function(praxishState, outcome) {
       console.warn("Undefined practice", practiceID);
       return praxishState;
     }
-    const isSpawning = practiceDef && sentenceParts.length === practiceDef.roles.length + 2;
+    let isSpawning = false;
+    if (practiceID) {
+      const roleParts = sentenceParts.slice(2, 2 + practiceDef.roles.length);
+      const instanceID = `practice.${practiceID}.${roleParts.join(".")}`;
+      isSpawning = DB.unify(instanceID, praxishState.db, {}).length === 0;
+    }
+    // Then perform the insertion.
+    DB.insert(praxishState.db, sentence);
+    // Finally, initialize the newly spawned practice instance if any.
     if (isSpawning) {
       //console.log("Spawning practice ::", sentence);
       // If the practice definition has an `init`, run it.
