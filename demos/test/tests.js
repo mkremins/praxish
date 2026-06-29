@@ -10,6 +10,8 @@ console.log(DB.dbToSentences(testDB));
 console.log(DB.unifyAll(["X.Y.woof", "fizz.buzz.X"], testDB));
 DB.retract(testDB, "foo.bar");
 console.log(DB.dbToSentences(testDB));
+DB.insert(testDB, "foo");
+console.log(DB.dbToSentences(testDB)); // should be unchanged
 
 /// Test math.
 
@@ -58,7 +60,12 @@ const subqueryTest = [
   "eq NumDancers 2",
 ];
 const subqueryRes = Praxish.query(subqueryTestDB, subqueryTest, {Actor: "tim"});
-console.log("subqueryRes", subqueryRes);
+console.log("subqueryRes", subqueryRes); // should yield kevin and jer as Dancers
+const sentenceInvolvingSet = "theyreAll.Dancers";
+const groundSIS = DB.ground(sentenceInvolvingSet, subqueryRes[0]); // should warn
+DB.insert(subqueryTestDB, groundSIS);
+const insertedSetRes = Praxish.query(subqueryTestDB, ["theyreAll.Something"], {});
+console.log("insertedSetRes", insertedSetRes); // should have opaque string value
 
 /// Define some practices for testing Praxish proper.
 

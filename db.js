@@ -90,7 +90,7 @@ DB.insert = function(db, sentence) {
       subtree = subtree[nonPunctPart];
     }
     else {
-      subtree[part] = {};
+      subtree[part] = subtree[part] || {};
     }
   }
   return db;
@@ -146,8 +146,12 @@ DB.ground = function(sentence, bindings) {
     const lastChar = part.slice(-1)[0];
     const hasPunct = lastChar === "!" || lastChar === ".";
     const nonPunctPart = hasPunct ? part.slice(0, -1) : part;
-    const boundVal = bindings[nonPunctPart];
+    let boundVal = bindings[nonPunctPart];
     if (boundVal === undefined) console.warn("Missing binding", nonPunctPart, bindings);
+    if (Array.isArray(boundVal)) {
+      console.warn("Unsafe use of set value", nonPunctPart, bindings);
+      boundVal = `<Set(${boundVal.length})>`;
+    }
     return (boundVal ?? nonPunctPart) + (hasPunct ? lastChar : "");
   });
   return groundedParts.join("");

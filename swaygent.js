@@ -55,19 +55,22 @@ Swaygent.computeVolitions = function(praxishState, actor) {
   const allVolitions = [];
   for (const practiceID of Object.keys(praxishState.db.practice)) {
     const practiceDef = praxishState.practiceDefs[practiceID];
-    for (const volitionRule of practiceDef.volitions || []) {
-      // Query for applicable instances of this volition rule.
-      // FIXME Should the initial bindings for this query also include role bindings
-      // from the originating practice instance? Right now we don't start with a practice
-      // *instance* per se, we just start with the practice definition abstractly.
-      // So maybe in the course of running the query we get instance bindings "for free"?
-      const instances = Praxish.query(praxishState.db, volitionRule.conditions, {Actor: actor});
-      for (const instance of instances) {
-        allVolitions.push({
-          type: "volition", practiceID, rule: volitionRule, bindings: instance,
-          score: Swaygent.evaluate(volitionRule.score || 0, instance),
-          name: Praxish.renderText(volitionRule.name, instance),
-        });
+    if ((practiceDef.volitions || []).length === 0) continue; // no volition rules defined
+    const instancesQuery = `practice.${practiceID}.${practiceDef.roles.join(".")}`;
+    const practiceInstances = DB.unify(instancesQuery, praxishState.db, {});
+    for (const practiceInstance of practiceInstances) {
+      for (const volitionRule of practiceDef.volitions) {
+        // Query for applicable instances of this volition rule
+        // in the context of a particular practice instance.
+        const context = {...practiceInstance, Actor: actor};
+        const volInstances = Praxish.query(praxishState.db, volitionRule.conditions, context);
+        for (const instance of volInstances) {
+          allVolitions.push({
+            type: "volition", practiceID, rule: volitionRule, bindings: instance,
+            score: Swaygent.evaluate(volitionRule.score || 0, instance),
+            name: Praxish.renderText(volitionRule.name, instance),
+          });
+        }
       }
     }
   }

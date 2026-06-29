@@ -90,7 +90,15 @@ function Turn(props) {
             })
           )
         )
-      })
+      }),
+      (!props.isCollapsed ? props.impossibleActions.map((action, actionIdx) => {
+        return e("div", {className: "action impossible"},
+          e("h4", {}, action.actionID),
+          e("div", {className: "tags-list"},
+            e("span", {className: "tag why-not"}, action.killedBy),
+          ),
+        );
+      }) : null),
     ),
     props.dbDiff ? e("div", {className: "db-diff"},
       props.dbDiff.removed.map(sent => e("div", {className: "removed"}, `- ${sent}`)),
@@ -128,7 +136,12 @@ function setUpTurn(appState, praxishState) {
   appState.actorIdx = advanceCursor(appState.actorIdx, appState.chars);
   const actor = appState.chars[appState.actorIdx];
   const possibleActions = Swaygent.scoreActions(praxishState, actor);
-  return {turnID, actor, isPlayer: actor.isPlayer, actions: possibleActions};
+  const impossibleActions = possibleActions.impossibleActions;
+  console.log("impossibleActions", impossibleActions);
+  return {
+    turnID, actor, isPlayer: actor.isPlayer,
+    actions: possibleActions, impossibleActions,
+  };
 }
 
 function actuallyDoAction(appState, praxishState, turnID, actionIdx) {
@@ -147,15 +160,46 @@ function actuallyDoAction(appState, praxishState, turnID, actionIdx) {
   requestAnimationFrame(tick);
 }
 
+function selectNPCAction(turn) {
+  let action = null; // Predeclare for later reassignment
+  // Priority pass: permit only top-priority actions to be picked.
+  const topPriority = turn.actions[0].priority;
+  const topPriorityActions = takeWhile(act => act.priority === topPriority, turn.actions);
+  // Positive score pass: restrict to positive-score actions if at all possible.
+  const positiveScoreActions = takeWhile(act => act.score > 0, topPriorityActions);
+  if (positiveScoreActions.length > 0) {
+    // Top-k pass: restrict to a few of the highest-scoring actions.
+    const k = 3; // Use `topPriorityActions.length` if you don't want a top-k cutoff
+    const topKActions = topPriorityActions.slice(0, k);
+    // Weighted random pass: select an action using weighted random choice.
+    // Weights are given by the top k actions' (uniformly positive) scores,
+    // self-multiplied to bias selection in favor of higher-scoring actions.
+    action = weightedRandomChoice(topKActions, act => Math.pow(act.score, 3));
+  }
+  else {
+    // Top-score pass: there are no positive-score actions, so grab the score
+    // of the *least bad* possible action and restrict to actions that are tied
+    // for that score.
+    const topScore = topPriorityActions[0].score;
+    const topScoringActions = takeWhile(act => act.score === topScore, topPriorityActions);
+    // Uniform random pass: select a random top-scoring action.
+    action = randNth(topScoringActions);
+  }
+  return turn.actions.indexOf(action);
+}
+
 function tick() {
   const turn = setUpTurn(appState, appPraxishState);
   appState.turns.push(turn);
+  // FIXME If `turn.actions` is empty, what's the bare minimum way to continue?
+  // Insert an empty transcript entry and proceed?
   if (turn.actor.isPlayer) {
     renderUI();
   }
   else {
     turn.isCollapsed = true;
-    actuallyDoAction(appState, appPraxishState, turn.turnID, 0);
+    const actionIdx = selectNPCAction(turn);
+    actuallyDoAction(appState, appPraxishState, turn.turnID, actionIdx);
   }
 }
 

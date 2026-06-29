@@ -42,15 +42,21 @@ Praxish.definePractice = function(praxishState, practiceDef) {
 // variable equality checks, and so on in your conditions.
 Praxish.query = function(db, conditions, bindings, opts) {
   let matches = [bindings];
+  const killsPerStep = []; // Track possible matches killed by each condition
   for (const condition of conditions) {
     const nextMatches = [];
+    let killsThisStep = [];
     if (typeof condition === "string") {
       const parts = condition.trim().split(/\s+/);
       if (parts.length === 1) {
         // Simple condition: just a logic sentence to try unifying with.
         for (const match of matches) {
-          for (const newMatch of DB.unify(condition, db, match)) {
+          const newMatches = DB.unify(condition, db, match);
+          for (const newMatch of newMatches) {
             nextMatches.push(newMatch);
+          }
+          if (newMatches.length === 0) {
+            killsThisStep.push(match);
           }
         }
       }
@@ -61,8 +67,7 @@ Praxish.query = function(db, conditions, bindings, opts) {
           // Check that the argument sentence *doesn't* unify, and kill the match if it does.
           for (const match of matches) {
             const badMatches = DB.unify(parts[1], db, match);
-            if (badMatches.length > 0) continue; // Implicitly kill match via no-op
-            nextMatches.push(match);
+            (badMatches.length > 0 ? killsThisStep : nextMatches).push(match);
           }
         }
         else if (op === "eq") {
@@ -75,8 +80,7 @@ Praxish.query = function(db, conditions, bindings, opts) {
               // Both sides bound or constant. Kill the match if they're not equal.
               const strLhs = String(groundedLhs);
               const strRhs = String(groundedRhs);
-              if (strLhs !== strRhs) continue; // Implicitly kill match via no-op
-              nextMatches.push(match);
+              (strLhs === strRhs ? nextMatches : killsThisStep).push(match);
             }
             else if (groundedLhs || groundedRhs) {
               // One side bound or constant, one unbound. Set the unbound var to the known val.
@@ -89,6 +93,7 @@ Praxish.query = function(db, conditions, bindings, opts) {
             else {
               // Both sides unbound. Probably indicates an error in the practice definition.
               console.warn("Both sides of eq check unbound", condition);
+              killsThisStep.push(match);
             }
           }
         }
@@ -103,13 +108,13 @@ Praxish.query = function(db, conditions, bindings, opts) {
               // Both sides bound or constant. Kill the match if they're equal.
               const strLhs = String(groundedLhs);
               const strRhs = String(groundedRhs);
-              if (strLhs === strRhs) continue; // Implicitly kill match via no-op
-              nextMatches.push(match);
+              (strLhs === strRhs ? killsThisStep : nextMatches).push(match);
             }
             else {
               // At least one of the arguments is unbound.
               // Probably indicates an error in the practice definition.
               console.warn("Part of neq check unbound", condition);
+              killsThisStep.push(match);
             }
           }
         }
@@ -129,13 +134,13 @@ Praxish.query = function(db, conditions, bindings, opts) {
                 gte: (a, b) => a >= b
               }[op];
               const pass = compare(Number(groundedLhs), Number(groundedRhs));
-              if (!pass) continue; // Implicitly kill match via no-op
-              nextMatches.push(match);
+              (pass ? nextMatches : killsThisStep).push(match);
             }
             else {
               // At least one of the arguments is unbound.
               // Probably indicates an error in the practice definition.
               console.warn("Part of numeric comparison unbound", condition);
+              killsThisStep.push(match);
             }
           }
         }
@@ -161,51 +166,61 @@ Praxish.query = function(db, conditions, bindings, opts) {
             }
             else if (groundedLhs && !groundedRhs && numOp === "count") {
               // Using `count` on a set
-              if (!Array.isArray(groundedLhs)) {
-                console.warn("Can't count non-set value", groundedLhs, condition);
-                continue; // Bail out early from processing this clause
+              if (Array.isArray(groundedLhs)) {
+                const newMatch = clone(match);
+                newMatch[newLvar] = groundedLhs.length;
+                nextMatches.push(newMatch);
               }
-              const newMatch = clone(match);
-              newMatch[newLvar] = groundedLhs.length;
-              nextMatches.push(newMatch);
+              else {
+                console.warn("Can't count non-set value", groundedLhs, condition);
+                killsThisStep.push(match);
+              }
             }
             else if (!calculate) {
               console.warn("Invalid numeric operator", numOp, condition);
+              killsThisStep.push(match);
             }
             else {
               // At least one of the arguments is unbound.
               // Probably indicates an error in the practice definition.
               console.warn("Part of calc op unbound", condition);
+              killsThisStep.push(match);
             }
           }
         }
         else {
           console.warn("Bad condition op", op, condition);
+          killsThisStep.push(match);
         }
       }
     }
     else if (condition.set) {
       if (opts?.isSubquery) {
         console.warn("Can't subquery inside subquery", condition);
-        continue; // Bail out early from processing this clause
+        killsThisStep = matches;
       }
-      // Execute a subquery to bind a new set
-      const newLvar = condition.set;
-      const findLvars = condition.find;
-      const subquery = condition.where;
-      for (const match of matches) {
-        const subqueryResults = Praxish.query(db, subquery, match, {isSubquery: true});
-        const projectedSet = subqueryResults.map(res => findLvars.map(lvar => res[lvar]));
-        const newMatch = clone(match);
-        newMatch[newLvar] = projectedSet;
-        nextMatches.push(newMatch);
+      else {
+        // Execute a subquery to bind a new set
+        const newLvar = condition.set;
+        const findLvars = condition.find;
+        const subquery = condition.where;
+        for (const match of matches) {
+          const subqueryResults = Praxish.query(db, subquery, match, {isSubquery: true});
+          const projectedSet = subqueryResults.map(res => findLvars.map(lvar => res[lvar]));
+          const newMatch = clone(match);
+          newMatch[newLvar] = projectedSet;
+          nextMatches.push(newMatch);
+        }
       }
     }
     else {
       console.warn("Condition must be string or object", condition);
+      killsThisStep = matches;
     }
     matches = nextMatches;
+    killsPerStep.push(killsThisStep);
   }
+  matches.killsPerStep = killsPerStep; // FIXME Named metadata property on array :/
   return matches;
 }
 
@@ -214,6 +229,7 @@ Praxish.query = function(db, conditions, bindings, opts) {
 Praxish.getAllPossibleActions = function(praxishState, actor) {
   const initBindings = {Actor: actor};
   const allPossibleActions = [];
+  const allImpossibleActions = [];
   for (const practiceID of Object.keys(praxishState.db.practice)) {
     // Query for instances of this practice.
     const practiceDef = praxishState.practiceDefs[practiceID];
@@ -237,9 +253,21 @@ Praxish.getAllPossibleActions = function(praxishState, actor) {
           // Add this possible action to the list of all possible actions.
           allPossibleActions.push(action);
         }
+        if (possibleActions.length === 0) {
+          // Store debug information about why this action is NOT possible
+          // for this actor in the current state.
+          const killerCondIdx = possibleActions.killsPerStep.findLastIndex(x => x.length > 0);
+          const killedBy = actionDef.conditions[killerCondIdx];
+          allImpossibleActions.push({
+            practiceID, instanceID, actionID: actionDef.name,
+            killedBy, fullDebug: possibleActions.killsPerStep,
+          });
+        }
       }
     }
   }
+  // FIXME Named metadata property on array :/
+  allPossibleActions.impossibleActions = allImpossibleActions;
   return allPossibleActions;
 }
 
@@ -274,11 +302,9 @@ Praxish.performOutcome = function(praxishState, outcome) {
   const parts = outcome.trim().split(/\s+/);
   const op = parts[0];
   if (op === "insert") {
-    // First just perform the insertion.
     const sentence = parts[1];
-    DB.insert(praxishState.db, sentence);
-    // Then figure out whether we're spawning a new practice instance,
-    // and initialize the newly spawned instance if we are.
+    // First assess whether this insertion implies a practice instance
+    // that doesn't yet exist in the DB.
     const sentenceParts = sentence.split(/[\.\!]/);
     const practiceID = sentenceParts[0] === "practice" && sentenceParts[1];
     const practiceDef = praxishState.practiceDefs[practiceID];
@@ -286,7 +312,15 @@ Praxish.performOutcome = function(praxishState, outcome) {
       console.warn("Undefined practice", practiceID);
       return praxishState;
     }
-    const isSpawning = practiceDef && sentenceParts.length === practiceDef.roles.length + 2;
+    let isSpawning = false;
+    if (practiceID) {
+      const roleParts = sentenceParts.slice(2, 2 + practiceDef.roles.length);
+      const instanceID = `practice.${practiceID}.${roleParts.join(".")}`;
+      isSpawning = DB.unify(instanceID, praxishState.db, {}).length === 0;
+    }
+    // Then perform the insertion.
+    DB.insert(praxishState.db, sentence);
+    // Finally, initialize the newly spawned practice instance if any.
     if (isSpawning) {
       //console.log("Spawning practice ::", sentence);
       // If the practice definition has an `init`, run it.
