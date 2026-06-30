@@ -26,7 +26,7 @@ function CharactersPanel(props) {
     ),
     e("div", {id: "chars-checkboxes"},
       props.chars.map((char, idx) => {
-        return e("div", {className: "char-checkbox"},
+        return e("div", {className: "char-checkbox", key: char.name},
           e("input", {
             type: "checkbox",
             checked: char.isPlayer,
@@ -71,6 +71,7 @@ function Turn(props) {
         if (completionState === "complete" && props.isCollapsed && !wasChosen) return null;
         return e("div", {
             className: `action${wasChosen?" chosen":""}`,
+            key: action.name,
             onClick: () => {
               // when the player clicks an action on an untaken turn, perform that action
               if (props.actionIdx !== undefined) return;
@@ -83,8 +84,8 @@ function Turn(props) {
             e("span", {className: "tag score"}, action.score),
           ),
           e("ul", {className: "sways-list"},
-            action.sways.map(sway => {
-              return e("li", {className: "sway"},
+            action.sways.map((sway, swayIdx) => {
+              return e("li", {className: "sway", key: swayIdx},
                 `${sway.type}: ${sway.name} (${sway.score || 0}, ${sway.rule.priority || "normal"})`
               )
             })
@@ -92,7 +93,7 @@ function Turn(props) {
         )
       }),
       (!props.isCollapsed ? props.impossibleActions.map((action, actionIdx) => {
-        return e("div", {className: "action impossible"},
+        return e("div", {className: "action impossible", key: action.actionID},
           e("h4", {}, action.actionID),
           e("div", {className: "tags-list"},
             e("span", {className: "tag why-not"}, action.killedBy),
@@ -101,8 +102,8 @@ function Turn(props) {
       }) : null),
     ),
     props.dbDiff ? e("div", {className: "db-diff"},
-      props.dbDiff.removed.map(sent => e("div", {className: "removed"}, `- ${sent}`)),
-      props.dbDiff.added.map(sent => e("div", {className: "added"}, `+ ${sent}`)),
+      props.dbDiff.removed.map(sent => e("div", {className: "removed", key: sent}, `- ${sent}`)),
+      props.dbDiff.added.map(sent => e("div", {className: "added", key: sent}, `+ ${sent}`)),
     ) : null,
     (completionState === "complete") ? e("button", {
       onClick: () => {
@@ -116,15 +117,15 @@ function Turn(props) {
 function TurnsTranscript(props) {
   return e("div", {id: "turns-transcript"},
     e("h2", {}, "Turns"),
-    props.turns.map(turn => e(Turn, turn))
+    props.turns.map(turn => e(Turn, {key: turn.turnID, ...turn}))
   );
 }
 
 function App(props) {
-  return [
+  return e("div", {className: "app-wrapper"},
     e(CharactersPanel, props),
     e(TurnsTranscript, props),
-  ];
+  );
 }
 
 renderUI();
