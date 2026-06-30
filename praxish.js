@@ -40,141 +40,182 @@ Praxish.definePractice = function(praxishState, practiceDef) {
 // internally consistent bindings maps that satisfy the `conditions`.
 // Use `query` instead of the simpler `unifyAll` when you need negation,
 // variable equality checks, and so on in your conditions.
-Praxish.query = function(db, conditions, bindings) {
+Praxish.query = function(db, conditions, bindings, opts) {
   let matches = [bindings];
   const killsPerStep = []; // Track possible matches killed by each condition
   for (const condition of conditions) {
     const nextMatches = [];
-    const killsThisStep = [];
-    const parts = condition.trim().split(/\s+/);
-    if (parts.length === 1) {
-      // Simple condition: just a logic sentence to try unifying with.
-      for (const match of matches) {
-        const newMatches = DB.unify(condition, db, match);
-        for (const newMatch of newMatches) {
-          nextMatches.push(newMatch);
-        }
-        if (newMatches.length === 0) {
-          killsThisStep.push(match);
-        }
-      }
-    }
-    else {
-      // Complex condition: an `op` plus one or more arguments.
-      const op = parts[0];
-      if (op === "not") {
-        // Check that the argument sentence *doesn't* unify, and kill the match if it does.
+    let killsThisStep = [];
+    if (typeof condition === "string") {
+      const parts = condition.trim().split(/\s+/);
+      if (parts.length === 1) {
+        // Simple condition: just a logic sentence to try unifying with.
         for (const match of matches) {
-          const badMatches = DB.unify(parts[1], db, match);
-          (badMatches.length > 0 ? killsThisStep : nextMatches).push(match);
-        }
-      }
-      else if (op === "eq") {
-        // Unify the two arguments, which can be either bound vars, unbound vars, or constants.
-        const [_, lhs, rhs] = parts;
-        for (const match of matches) {
-          const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
-          const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
-          if (groundedLhs && groundedRhs) {
-            // Both sides bound or constant. Kill the match if they're not equal.
-            (groundedLhs === groundedRhs ? nextMatches : killsThisStep).push(match);
-          }
-          else if (groundedLhs || groundedRhs) {
-            // One side bound or constant, one unbound. Set the unbound var to the known val.
-            const unboundVar = groundedLhs ? rhs : lhs;
-            const groundedVal = groundedLhs ? groundedLhs : groundedRhs;
-            const newMatch = clone(match);
-            newMatch[unboundVar] = groundedVal;
+          const newMatches = DB.unify(condition, db, match);
+          for (const newMatch of newMatches) {
             nextMatches.push(newMatch);
           }
-          else {
-            // Both sides unbound. Probably indicates an error in the practice definition.
-            console.warn("Both sides of eq check unbound", condition);
-            killsThisStep.push(match);
-          }
-        }
-      }
-      else if (op === "neq") {
-        // Kill the match if the two arguments (either constants or bound vars) are equal.
-        // Basically a simplified version of the `eq` logic with the equality check inverted.
-        const [_, lhs, rhs] = parts;
-        for (const match of matches) {
-          const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
-          const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
-          if (groundedLhs && groundedRhs) {
-            // Both sides bound or constant. Kill the match if they're equal.
-            (groundedLhs === groundedRhs ? killsThisStep : nextMatches).push(match);
-          }
-          else {
-            // At least one of the arguments is unbound.
-            // Probably indicates an error in the practice definition.
-            console.warn("Part of neq check unbound", condition);
-            killsThisStep.push(match);
-          }
-        }
-      }
-      else if (["lt", "lte", "gt", "gte"].includes(op)) {
-        // Kill the match if the numeric constraint is unmet. Similar to the `neq` logic,
-        // but coerces arguments to numbers and applies a numeric comparator.
-        const [_, lhs, rhs] = parts;
-        for (const match of matches) {
-          const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
-          const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
-          if (groundedLhs && groundedRhs) {
-            // Both sides bound or constant. Kill the match if the comparator fails.
-            const compare = {
-              lt:  (a, b) => a <  b,
-              lte: (a, b) => a <= b,
-              gt:  (a, b) => a >  b,
-              gte: (a, b) => a >= b
-            }[op];
-            const pass = compare(Number(groundedLhs), Number(groundedRhs));
-            (pass ? nextMatches : killsThisStep).push(match);
-          }
-          else {
-            // At least one of the arguments is unbound.
-            // Probably indicates an error in the practice definition.
-            console.warn("Part of numeric comparison unbound", condition);
-            killsThisStep.push(match);
-          }
-        }
-      }
-      else if (op === "calc") {
-        // Bind a new lvar (left) to the result of applying a binary numeric operator
-        // (middle) to two constant or bound lvar arguments (right).
-        const [_, newLvar, numOp, lhs, rhs] = parts;
-        for (const match of matches) {
-          const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
-          const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
-          const calculate = {
-            add: (a, b) => a + b,
-            sub: (a, b) => a - b,
-            mul: (a, b) => a * b,
-            // FIXME No `div` for now, I don't want to think about floats in the DB
-          }[numOp];
-          if (groundedLhs && groundedRhs && calculate) {
-            // Both arguments bound or constant, numeric op known. Calculate and set the new lvar.
-            const result = calculate(Number(groundedLhs), Number(groundedRhs));
-            const newMatch = clone(match);
-            newMatch[newLvar] = result;
-            nextMatches.push(newMatch);
-          }
-          else if (!calculate) {
-            console.warn("Invalid numeric operator", numOp, condition);
-            killsThisStep.push(match);
-          }
-          else {
-            // At least one of the arguments is unbound.
-            // Probably indicates an error in the practice definition.
-            console.warn("Part of calc op unbound", condition);
+          if (newMatches.length === 0) {
             killsThisStep.push(match);
           }
         }
       }
       else {
-        console.warn("Bad condition op", op, condition);
-        killsThisStep.push(match);
+        // Complex condition: an `op` plus one or more arguments.
+        const op = parts[0];
+        if (op === "not") {
+          // Check that the argument sentence *doesn't* unify, and kill the match if it does.
+          for (const match of matches) {
+            const badMatches = DB.unify(parts[1], db, match);
+            (badMatches.length > 0 ? killsThisStep : nextMatches).push(match);
+          }
+        }
+        else if (op === "eq") {
+          // Unify the two arguments, which can be either bound vars, unbound vars, or constants.
+          const [_, lhs, rhs] = parts;
+          for (const match of matches) {
+            const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
+            const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
+            if (groundedLhs && groundedRhs) {
+              // Both sides bound or constant. Kill the match if they're not equal.
+              const strLhs = String(groundedLhs);
+              const strRhs = String(groundedRhs);
+              (strLhs === strRhs ? nextMatches : killsThisStep).push(match);
+            }
+            else if (groundedLhs || groundedRhs) {
+              // One side bound or constant, one unbound. Set the unbound var to the known val.
+              const unboundVar = groundedLhs ? rhs : lhs;
+              const groundedVal = groundedLhs ? groundedLhs : groundedRhs;
+              const newMatch = clone(match);
+              newMatch[unboundVar] = groundedVal;
+              nextMatches.push(newMatch);
+            }
+            else {
+              // Both sides unbound. Probably indicates an error in the practice definition.
+              console.warn("Both sides of eq check unbound", condition);
+              killsThisStep.push(match);
+            }
+          }
+        }
+        else if (op === "neq") {
+          // Kill the match if the two arguments (either constants or bound vars) are equal.
+          // Basically a simplified version of the `eq` logic with the equality check inverted.
+          const [_, lhs, rhs] = parts;
+          for (const match of matches) {
+            const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
+            const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
+            if (groundedLhs && groundedRhs) {
+              // Both sides bound or constant. Kill the match if they're equal.
+              const strLhs = String(groundedLhs);
+              const strRhs = String(groundedRhs);
+              (strLhs === strRhs ? killsThisStep : nextMatches).push(match);
+            }
+            else {
+              // At least one of the arguments is unbound.
+              // Probably indicates an error in the practice definition.
+              console.warn("Part of neq check unbound", condition);
+              killsThisStep.push(match);
+            }
+          }
+        }
+        else if (["lt", "lte", "gt", "gte"].includes(op)) {
+          // Kill the match if the numeric constraint is unmet. Similar to the `neq` logic,
+          // but coerces arguments to numbers and applies a numeric comparator.
+          const [_, lhs, rhs] = parts;
+          for (const match of matches) {
+            const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
+            const groundedRhs = DB.isVariable(rhs) ? match[rhs] : rhs;
+            if (groundedLhs && groundedRhs) {
+              // Both sides bound or constant. Kill the match if the comparator fails.
+              const compare = {
+                lt:  (a, b) => a <  b,
+                lte: (a, b) => a <= b,
+                gt:  (a, b) => a >  b,
+                gte: (a, b) => a >= b
+              }[op];
+              const pass = compare(Number(groundedLhs), Number(groundedRhs));
+              (pass ? nextMatches : killsThisStep).push(match);
+            }
+            else {
+              // At least one of the arguments is unbound.
+              // Probably indicates an error in the practice definition.
+              console.warn("Part of numeric comparison unbound", condition);
+              killsThisStep.push(match);
+            }
+          }
+        }
+        else if (op === "calc") {
+          // Bind a new lvar (left) to the result of applying a binary numeric operator
+          // (middle) to two constant or bound lvar arguments (right).
+          const [_, newLvar, numOp, lhs, rhs] = parts;
+          for (const match of matches) {
+            const groundedLhs = DB.isVariable(lhs) ? match[lhs] : lhs;
+            const groundedRhs = rhs && DB.isVariable(rhs) ? match[rhs] : rhs;
+            const calculate = {
+              add: (a, b) => a + b,
+              sub: (a, b) => a - b,
+              mul: (a, b) => a * b,
+              // FIXME No `div` for now, I don't want to think about floats in the DB
+            }[numOp];
+            if (groundedLhs && groundedRhs && calculate) {
+              // Both arguments bound or constant, numeric op known. Calculate and set the new lvar.
+              const result = calculate(Number(groundedLhs), Number(groundedRhs));
+              const newMatch = clone(match);
+              newMatch[newLvar] = result;
+              nextMatches.push(newMatch);
+            }
+            else if (groundedLhs && !groundedRhs && numOp === "count") {
+              // Using `count` on a set
+              if (Array.isArray(groundedLhs)) {
+                const newMatch = clone(match);
+                newMatch[newLvar] = groundedLhs.length;
+                nextMatches.push(newMatch);
+              }
+              else {
+                console.warn("Can't count non-set value", groundedLhs, condition);
+                killsThisStep.push(match);
+              }
+            }
+            else if (!calculate) {
+              console.warn("Invalid numeric operator", numOp, condition);
+              killsThisStep.push(match);
+            }
+            else {
+              // At least one of the arguments is unbound.
+              // Probably indicates an error in the practice definition.
+              console.warn("Part of calc op unbound", condition);
+              killsThisStep.push(match);
+            }
+          }
+        }
+        else {
+          console.warn("Bad condition op", op, condition);
+          killsThisStep.push(match);
+        }
       }
+    }
+    else if (condition.set) {
+      if (opts?.isSubquery) {
+        console.warn("Can't subquery inside subquery", condition);
+        killsThisStep = matches;
+      }
+      else {
+        // Execute a subquery to bind a new set
+        const newLvar = condition.set;
+        const findLvars = condition.find;
+        const subquery = condition.where;
+        for (const match of matches) {
+          const subqueryResults = Praxish.query(db, subquery, match, {isSubquery: true});
+          const projectedSet = subqueryResults.map(res => findLvars.map(lvar => res[lvar]));
+          const newMatch = clone(match);
+          newMatch[newLvar] = projectedSet;
+          nextMatches.push(newMatch);
+        }
+      }
+    }
+    else {
+      console.warn("Condition must be string or object", condition);
+      killsThisStep = matches;
     }
     matches = nextMatches;
     killsPerStep.push(killsThisStep);
