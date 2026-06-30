@@ -168,7 +168,7 @@ Praxish.query = function(db, conditions, bindings, opts) {
               // Using `count` on a set
               if (Array.isArray(groundedLhs)) {
                 const newMatch = clone(match);
-                newMatch[newLvar] = groundedLhs.length;
+                newMatch[newLvar] = String(groundedLhs.length);
                 nextMatches.push(newMatch);
               }
               else {
